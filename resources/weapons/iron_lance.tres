@@ -7,4 +7,6 @@ script = ExtResource("1_lmfad")
 weapon_name = "Iron Lance"
 weapon_type = 1
 might = 7
+hit = 80
+weight = 8
 metadata/_custom_type_script = "uid://d0p2qphidwj4q"

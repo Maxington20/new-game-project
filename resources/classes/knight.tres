@@ -11,4 +11,6 @@ skill = 4
 speed = 3
 defense = 10
 movement_range = 4
+constitution = 13
+luck = 3
 metadata/_custom_type_script = "uid://brgpx6u5ytqsu"

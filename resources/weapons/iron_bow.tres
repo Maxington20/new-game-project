@@ -9,4 +9,6 @@ weapon_type = 3
 might = 6
 min_range = 2
 max_range = 2
+hit = 85
+weight = 5
 metadata/_custom_type_script = "uid://d0p2qphidwj4q"

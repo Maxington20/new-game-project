@@ -10,8 +10,10 @@ extends Resource
 @export var speed: int = 5
 @export var defense: int = 5
 @export var resistance: int = 0
-
 @export var movement_range: int = 5
 
-@export_range(1, 10) var min_attack_range: int = 1
-@export_range(1, 10) var max_attack_range: int = 1
+@export var min_attack_range: int = 1
+@export var max_attack_range: int = 1
+
+@export var constitution: int = 5
+@export var luck: int = 0

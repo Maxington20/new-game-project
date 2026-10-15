@@ -278,6 +278,40 @@ func handle_attack_target(cell: Vector2i) -> void:
 	show_combat_forecast()
 
 
+func get_forecast_line(attacker: Unit, defender: Unit) -> String:
+	if not CombatCalculator.can_attack(attacker, defender):
+		return "Cannot attack"
+
+	var damage: int = CombatCalculator.calculate_damage(
+		attacker,
+		defender
+	)
+
+	var hit: int = CombatCalculator.get_displayed_hit(
+		attacker,
+		defender
+	)
+
+	var critical: int = CombatCalculator.get_displayed_critical(
+		attacker,
+		defender
+	)
+
+	var strikes: int = 1
+
+	if CombatCalculator.can_follow_up(attacker, defender):
+		strikes = 2
+
+	return (
+		"Damage: " + str(damage)
+		+ " x" + str(strikes)
+		+ "\nHit: " + str(hit) + "%"
+		+ "\nCrit: " + str(critical) + "%"
+		+ "\nAttack Speed: "
+		+ str(CombatCalculator.get_attack_speed(attacker))
+	)
+
+
 func show_combat_forecast() -> void:
 	if selected_unit == null or pending_target == null:
 		return
@@ -287,63 +321,25 @@ func show_combat_forecast() -> void:
 	var attacker: Unit = selected_unit
 	var defender: Unit = pending_target
 
-	var attack_damage: int = CombatCalculator.calculate_damage(
-		attacker,
-		defender
-	)
-
-	var defender_survives: bool = (
-		defender.current_hp > attack_damage
-	)
-
-	var can_counter: bool = (
-		defender_survives
-		and CombatCalculator.can_counterattack(defender, attacker)
-	)
-
-	var counter_damage: int = 0
-
-	if can_counter:
-		counter_damage = CombatCalculator.calculate_damage(
-			defender,
-			attacker
-		)
-
 	var attacker_name: String = attacker.unit_data.character_name
 	var defender_name: String = defender.unit_data.character_name
 
-	var attacker_weapon: String = (
-		attacker.equipped_weapon.weapon_name
-	)
-
+	var attacker_weapon: String = attacker.equipped_weapon.weapon_name
 	var defender_weapon: String = "None"
 
 	if defender.equipped_weapon != null:
 		defender_weapon = defender.equipped_weapon.weapon_name
 
 	var forecast: String = (
-		attacker_name + " vs " + defender_name
+		attacker_name + " (" + attacker_weapon + ")"
+		+ "\nHP: " + str(attacker.current_hp)
+		+ "\n" + get_forecast_line(attacker, defender)
 		+ "\n\n"
-		+ attacker_name + " HP: " + str(attacker.current_hp)
-		+ "\n"
-		+ "Weapon: " + attacker_weapon
-		+ "\n"
-		+ "Damage: " + str(attack_damage)
-		+ "\n\n"
-		+ defender_name + " HP: " + str(defender.current_hp)
-		+ "\n"
-		+ "Weapon: " + defender_weapon
+		+ defender_name + " (" + defender_weapon + ")"
+		+ "\nHP: " + str(defender.current_hp)
+		+ "\n" + get_forecast_line(defender, attacker)
+		+ "\n\nConfirm attack?"
 	)
-
-	if can_counter:
-		forecast += (
-            "\n"
-			+ "Counterattack damage: " + str(counter_damage)
-		)
-	else:
-		forecast += "\nCounterattack: None"
-
-	forecast += "\n\nConfirm attack?"
 
 	combat_dialog.dialog_text = forecast
 	combat_dialog.popup_centered()
@@ -360,27 +356,67 @@ func _on_combat_confirmed() -> void:
 	var defender: Unit = pending_target
 
 	if not CombatCalculator.can_attack(attacker, defender):
-		interaction_state = InteractionState.TARGETING
 		pending_target = null
+		interaction_state = InteractionState.TARGETING
 		return
 
-	var attack_damage: int = CombatCalculator.calculate_damage(
+	# Determine follow-up eligibility before combat changes HP.
+	var attacker_follows: bool = CombatCalculator.can_follow_up(
 		attacker,
 		defender
 	)
 
-	apply_damage(defender, attack_damage)
+	var defender_follows: bool = (
+		CombatCalculator.can_counterattack(defender, attacker)
+		and CombatCalculator.can_follow_up(defender, attacker)
+	)
 
-	if defender.current_hp > 0:
+	perform_strike(attacker, defender)
+
+	if attacker.current_hp > 0 and defender.current_hp > 0:
 		if CombatCalculator.can_counterattack(defender, attacker):
-			var counter_damage: int = CombatCalculator.calculate_damage(
-				defender,
-				attacker
-			)
+			perform_strike(defender, attacker)
 
-			apply_damage(attacker, counter_damage)
+	if attacker.current_hp > 0 and defender.current_hp > 0:
+		if attacker_follows:
+			perform_strike(attacker, defender)
+		elif defender_follows:
+			perform_strike(defender, attacker)
 
 	complete_unit_action()
+
+
+func perform_strike(attacker: Unit, defender: Unit) -> void:
+	var result: Dictionary = CombatCalculator.resolve_strike(
+		attacker,
+		defender
+	)
+
+	if not result["valid"]:
+		return
+
+	var attacker_name: String = attacker.unit_data.character_name
+	var defender_name: String = defender.unit_data.character_name
+
+	if not result["hit"]:
+		print(attacker_name, " attacks ", defender_name, " — MISS!")
+		return
+
+	var damage: int = result["damage"]
+
+	if result["critical"]:
+		print(attacker_name, " lands a CRITICAL HIT!")
+
+	print(
+		attacker_name,
+		" hits ",
+		defender_name,
+		" for ",
+		damage,
+        " damage."
+	)
+
+	apply_damage(defender, damage)
 
 
 func _on_combat_cancelled() -> void:
@@ -398,9 +434,7 @@ func apply_damage(unit: Unit, damage: int) -> void:
 
 	print(
 		unit_name,
-		" takes ",
-		damage,
-		" damage. HP remaining: ",
+		" HP remaining: ",
 		unit.current_hp
 	)
 
@@ -463,6 +497,6 @@ func _on_phase_changed(team: Unit.Team) -> void:
 
 
 func run_enemy_phase() -> void:
-	# Placeholder until enemy AI is implemented.
+	# Enemy AI will be implemented later.
 	await get_tree().create_timer(1.5).timeout
 	turn_system.end_phase()

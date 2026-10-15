@@ -6,4 +6,6 @@
 script = ExtResource("1_ljifm")
 weapon_name = "Iron Sword"
 might = 5
+hit = 90
+weight = 5
 metadata/_custom_type_script = "uid://d0p2qphidwj4q"

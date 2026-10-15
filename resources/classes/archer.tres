@@ -12,4 +12,6 @@ defense = 3
 resistance = 2
 min_attack_range = 2
 max_attack_range = 2
+constitution = 7
+luck = 4
 metadata/_custom_type_script = "uid://brgpx6u5ytqsu"
