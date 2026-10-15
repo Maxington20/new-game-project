@@ -63,3 +63,7 @@ layout_mode = 2
 text = "Player Phase"
 
 [node name="UnitActionMenu" parent="CanvasLayer" unique_id=1798211413 instance=ExtResource("11_3xjfw")]
+
+[node name="CombatForecastDialog" type="ConfirmationDialog" parent="CanvasLayer" unique_id=1874035076]
+title = "Combat Forecast"
+ok_button_text = "Attack"
