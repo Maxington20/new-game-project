@@ -21,7 +21,7 @@ const ENEMY_COLOR := Color("#c74b50")
 
 var current_hp: int = 0
 var is_moving: bool = false
-
+var has_acted: bool = false
 
 var movement_range: int:
 	get:
@@ -43,6 +43,9 @@ func _ready() -> void:
 func _draw() -> void:
 	var color := PLAYER_COLOR if team == Team.PLAYER else ENEMY_COLOR
 
+	if has_acted:
+		color = color.darkened(0.5)
+
 	var rect := Rect2(
 		Vector2(4, 4),
 		Vector2(CELL_SIZE - 8, CELL_SIZE - 8)
@@ -52,7 +55,11 @@ func _draw() -> void:
 
 
 func move_along_path(path: Array[Vector2i]) -> void:
-	if is_moving or path.is_empty():
+	if is_moving:
+		return
+
+	if path.is_empty():
+		movement_finished.emit()
 		return
 
 	is_moving = true
@@ -70,7 +77,6 @@ func move_along_path(path: Array[Vector2i]) -> void:
 		)
 
 		await tween.finished
-
 		grid_position = cell
 
 	is_moving = false
