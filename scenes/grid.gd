@@ -12,6 +12,7 @@ const COLOR_DARK := Color("#78996c")
 const COLOR_LINES := Color("#425c3b")
 const COLOR_SELECTED := Color("#e8d36a")
 const COLOR_MOVEMENT := Color("#6a9fe8")
+const COLOR_ATTACK := Color("#d96b6b")
 
 const DIRECTIONS: Array[Vector2i] = [
 	Vector2i.UP,
@@ -22,12 +23,14 @@ const DIRECTIONS: Array[Vector2i] = [
 
 var selected_cell: Vector2i = Vector2i(-1, -1)
 var highlighted_cells: Array[Vector2i] = []
+var attack_cells: Array[Vector2i] = []
 
 
 func _draw() -> void:
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
 			var cell := Vector2i(x, y)
+
 			var rect := Rect2(
 				Vector2(cell * CELL_SIZE),
 				Vector2(CELL_SIZE, CELL_SIZE)
@@ -37,6 +40,9 @@ func _draw() -> void:
 
 			if (x + y) % 2 == 1:
 				color = COLOR_DARK
+
+			if cell in attack_cells:
+				color = COLOR_ATTACK
 
 			if cell in highlighted_cells:
 				color = COLOR_MOVEMENT
@@ -107,12 +113,65 @@ func get_reachable_cells(
 
 			distances[next] = distances[current] + 1
 			previous[next] = current
+
 			queue.append(next)
 
 	return {
 		"distances": distances,
 		"previous": previous
 	}
+
+
+func get_attack_cells(
+	origin: Vector2i,
+	min_range: int,
+	max_range: int
+) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+
+	for y in range(GRID_HEIGHT):
+		for x in range(GRID_WIDTH):
+			var cell := Vector2i(x, y)
+
+			var distance := (
+				absi(cell.x - origin.x)
+				+ absi(cell.y - origin.y)
+			)
+
+			if distance >= min_range and distance <= max_range:
+				cells.append(cell)
+
+	return cells
+
+
+func get_potential_attack_cells(
+	movement_cells: Array[Vector2i],
+	min_range: int,
+	max_range: int
+) -> Array[Vector2i]:
+	var attackable: Dictionary = {}
+	var movement_lookup: Dictionary = {}
+
+	for cell in movement_cells:
+		movement_lookup[cell] = true
+
+	for origin in movement_cells:
+		var cells := get_attack_cells(
+			origin,
+			min_range,
+			max_range
+		)
+
+		for cell in cells:
+			if not movement_lookup.has(cell):
+				attackable[cell] = true
+
+	var result: Array[Vector2i] = []
+
+	for cell in attackable.keys():
+		result.append(cell)
+
+	return result
 
 
 func reconstruct_path(

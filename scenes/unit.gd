@@ -15,20 +15,34 @@ enum Team {
 @export var movement_speed: float = 160.0
 
 const CELL_SIZE: int = 32
-
 const PLAYER_COLOR := Color("#4682b4")
 const ENEMY_COLOR := Color("#c74b50")
+const TEXT_COLOR := Color.WHITE
 
 var current_hp: int = 0
 var is_moving: bool = false
 var has_acted: bool = false
 
+
 var movement_range: int:
 	get:
 		if unit_data == null or unit_data.unit_class == null:
 			return 0
-
 		return unit_data.unit_class.movement_range
+
+
+var min_attack_range: int:
+	get:
+		if unit_data == null or unit_data.unit_class == null:
+			return 1
+		return unit_data.unit_class.min_attack_range
+
+
+var max_attack_range: int:
+	get:
+		if unit_data == null or unit_data.unit_class == null:
+			return 1
+		return unit_data.unit_class.max_attack_range
 
 
 func _ready() -> void:
@@ -52,6 +66,47 @@ func _draw() -> void:
 	)
 
 	draw_rect(rect, color)
+
+	var class_letter := get_class_letter()
+	var font := ThemeDB.fallback_font
+	var font_size := 16
+
+	var text_size := font.get_string_size(
+		class_letter,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		font_size
+	)
+
+	var text_position := Vector2(
+		(CELL_SIZE - text_size.x) / 2.0,
+		(CELL_SIZE + text_size.y) / 2.0 - 3.0
+	)
+
+	draw_string(
+		font,
+		text_position,
+		class_letter,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		font_size,
+		TEXT_COLOR
+	)
+
+
+func get_class_letter() -> String:
+	if unit_data == null or unit_data.unit_class == null:
+		return "?"
+
+	match unit_data.unit_class.class_name_display.to_lower():
+		"swordsman":
+			return "S"
+		"knight":
+			return "K"
+		"archer":
+			return "A"
+		_:
+			return "?"
 
 
 func move_along_path(path: Array[Vector2i]) -> void:

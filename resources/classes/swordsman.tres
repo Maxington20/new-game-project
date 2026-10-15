@@ -4,6 +4,7 @@
 
 [resource]
 script = ExtResource("1_a5rom")
+class_name_display = "Swordsman"
 strength = 6
 skill = 7
 speed = 8
