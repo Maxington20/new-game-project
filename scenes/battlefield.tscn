@@ -12,3 +12,9 @@ script = ExtResource("1_5rve1")
 
 [node name="Unit" parent="." unique_id=410315746 instance=ExtResource("2_d5hba")]
 grid_position = Vector2i(5, 4)
+
+[node name="Unit2" parent="." unique_id=1863803447 instance=ExtResource("2_d5hba")]
+grid_position = Vector2i(8, 4)
+
+[node name="Unit3" parent="." unique_id=1616180016 instance=ExtResource("2_d5hba")]
+grid_position = Vector2i(6, 7)

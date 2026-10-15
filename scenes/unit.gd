@@ -15,7 +15,7 @@ var is_moving: bool = false
 
 
 func _ready() -> void:
-	position = Vector2(grid_position) * CELL_SIZE
+	position = Vector2(grid_position * CELL_SIZE)
 
 
 func _draw() -> void:
@@ -27,30 +27,15 @@ func _draw() -> void:
 	draw_rect(rect, UNIT_COLOR)
 
 
-func move_to_cell(target_cell: Vector2i) -> void:
-	if is_moving:
+func move_along_path(path: Array[Vector2i]) -> void:
+	if is_moving or path.is_empty():
 		return
 
 	is_moving = true
 
-	var current_cell := grid_position
-	var path: Array[Vector2i] = []
-
-	# Move horizontally first.
-	while current_cell.x != target_cell.x:
-		current_cell.x += signi(target_cell.x - current_cell.x)
-		path.append(current_cell)
-
-	# Then move vertically.
-	while current_cell.y != target_cell.y:
-		current_cell.y += signi(target_cell.y - current_cell.y)
-		path.append(current_cell)
-
 	for cell in path:
-		var target_position := Vector2(cell) * CELL_SIZE
-
-		var distance := position.distance_to(target_position)
-		var duration := distance / movement_speed
+		var target_position := Vector2(cell * CELL_SIZE)
+		var duration := position.distance_to(target_position) / movement_speed
 
 		var tween := create_tween()
 		tween.tween_property(
@@ -62,6 +47,7 @@ func move_to_cell(target_cell: Vector2i) -> void:
 
 		await tween.finished
 
-	grid_position = target_cell
+		grid_position = cell
+
 	is_moving = false
 	movement_finished.emit()

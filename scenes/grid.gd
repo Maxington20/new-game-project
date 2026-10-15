@@ -13,6 +13,13 @@ const COLOR_LINES := Color("#425c3b")
 const COLOR_SELECTED := Color("#e8d36a")
 const COLOR_MOVEMENT := Color("#6a9fe8")
 
+const DIRECTIONS: Array[Vector2i] = [
+	Vector2i.UP,
+	Vector2i.RIGHT,
+	Vector2i.DOWN,
+	Vector2i.LEFT
+]
+
 var selected_cell: Vector2i = Vector2i(-1, -1)
 var highlighted_cells: Array[Vector2i] = []
 
@@ -21,14 +28,8 @@ func _draw() -> void:
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
 			var cell := Vector2i(x, y)
-
-			var position := Vector2(
-				x * CELL_SIZE,
-				y * CELL_SIZE
-			)
-
 			var rect := Rect2(
-				position,
+				Vector2(cell * CELL_SIZE),
 				Vector2(CELL_SIZE, CELL_SIZE)
 			)
 
@@ -57,10 +58,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				floori(mouse_position.y / CELL_SIZE)
 			)
 
-			if not is_cell_in_bounds(cell):
-				return
-
-			cell_selected.emit(cell)
+			if is_cell_in_bounds(cell):
+				cell_selected.emit(cell)
 
 
 func is_cell_in_bounds(cell: Vector2i) -> bool:
@@ -73,28 +72,66 @@ func is_cell_in_bounds(cell: Vector2i) -> bool:
 
 
 func cell_to_world(cell: Vector2i) -> Vector2:
-	return Vector2(
-		cell.x * CELL_SIZE + CELL_SIZE / 2.0,
-		cell.y * CELL_SIZE + CELL_SIZE / 2.0
-	)
+	return Vector2(cell * CELL_SIZE) + Vector2.ONE * CELL_SIZE / 2.0
 
 
-func get_cells_in_range(
+func get_reachable_cells(
 	origin: Vector2i,
-	movement_range: int
+	movement_range: int,
+	occupied_cells: Array[Vector2i]
+) -> Dictionary:
+	var distances: Dictionary = {origin: 0}
+	var previous: Dictionary = {}
+
+	var queue: Array[Vector2i] = [origin]
+	var index := 0
+
+	while index < queue.size():
+		var current := queue[index]
+		index += 1
+
+		if distances[current] >= movement_range:
+			continue
+
+		for direction in DIRECTIONS:
+			var next := current + direction
+
+			if not is_cell_in_bounds(next):
+				continue
+
+			if next in occupied_cells:
+				continue
+
+			if distances.has(next):
+				continue
+
+			distances[next] = distances[current] + 1
+			previous[next] = current
+			queue.append(next)
+
+	return {
+		"distances": distances,
+		"previous": previous
+	}
+
+
+func reconstruct_path(
+	origin: Vector2i,
+	destination: Vector2i,
+	previous: Dictionary
 ) -> Array[Vector2i]:
-	var cells: Array[Vector2i] = []
+	var path: Array[Vector2i] = []
 
-	for y in range(GRID_HEIGHT):
-		for x in range(GRID_WIDTH):
-			var cell := Vector2i(x, y)
+	if destination == origin:
+		return path
 
-			var distance := (
-				absi(cell.x - origin.x)
-				+ absi(cell.y - origin.y)
-			)
+	if not previous.has(destination):
+		return path
 
-			if distance <= movement_range:
-				cells.append(cell)
+	var current := destination
 
-	return cells
+	while current != origin:
+		path.push_front(current)
+		current = previous[current]
+
+	return path
