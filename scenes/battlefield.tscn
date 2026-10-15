@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://d0s646iokhf5e"]
+
+[ext_resource type="Script" uid="uid://bdxk7p8jgwg8a" path="res://scenes/grid.gd" id="1_5rve1"]
+[ext_resource type="Script" uid="uid://c0dpi8447i3a1" path="res://scenes/battlefield.gd" id="1_j68fe"]
+[ext_resource type="PackedScene" uid="uid://p00xac8dq1qo" path="res://scenes/unit.tscn" id="2_d5hba"]
+
+[node name="Battlefield" type="Node2D" unique_id=410340847]
+script = ExtResource("1_j68fe")
+
+[node name="Grid" type="Node2D" parent="." unique_id=1525657147]
+script = ExtResource("1_5rve1")
+
+[node name="Unit" parent="." unique_id=410315746 instance=ExtResource("2_d5hba")]
+grid_position = Vector2i(5, 4)

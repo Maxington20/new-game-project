@@ -1,0 +1,29 @@
+# Godot 4 - generated editor and import cache
+.godot/
+
+# Godot temporary files
+*.tmp
+*.bak
+
+# Imported translation files
+*.translation
+
+# C# / .NET build output (if added later)
+.mono/
+bin/
+obj/
+
+# IDE settings
+.vs/
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor swap files
+*.swp
+*.swo
+*~
