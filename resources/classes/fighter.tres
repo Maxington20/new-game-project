@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="UnitClassResource" format=3 uid="uid://clvfsds27s52n"]
+
+[ext_resource type="Script" uid="uid://brgpx6u5ytqsu" path="res://scripts/resources/unit_class_resource.gd" id="1_k2608"]
+
+[resource]
+script = ExtResource("1_k2608")
+class_name_display = "Fighter"
+max_hp = 24
+strength = 8
+speed = 6
+defense = 4
+resistance = 1
+metadata/_custom_type_script = "uid://brgpx6u5ytqsu"

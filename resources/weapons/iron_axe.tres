@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponResource" format=3 uid="uid://bqpu2ilk04bly"]
+
+[ext_resource type="Script" uid="uid://d0p2qphidwj4q" path="res://scripts/resources/weapon_resource.gd" id="1_npudt"]
+
+[resource]
+script = ExtResource("1_npudt")
+weapon_name = "Iron Axe"
+weapon_type = 2
+might = 8
+hit = 75
+critical = 1
+weight = 1
+metadata/_custom_type_script = "uid://d0p2qphidwj4q"

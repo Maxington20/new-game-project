@@ -112,6 +112,8 @@ func get_class_letter() -> String:
 			return "K"
 		"archer":
 			return "A"
+		"fighter":
+			return "F"
 		_:
 			return "?"
 
@@ -128,9 +130,12 @@ func move_along_path(path: Array[Vector2i]) -> void:
 
 	for cell in path:
 		var target_position := Vector2(cell * CELL_SIZE)
-		var duration := position.distance_to(target_position) / movement_speed
+		var duration := (
+			position.distance_to(target_position) / movement_speed
+		)
 
 		var tween := create_tween()
+
 		tween.tween_property(
 			self,
 			"position",
