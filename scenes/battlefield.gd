@@ -132,46 +132,11 @@ func get_attack_targets(unit: Unit) -> Array[Unit]:
 	var targets: Array[Unit] = []
 
 	for child in get_children():
-		if not child is Unit:
-			continue
-
-		var target: Unit = child
-
-		if target.team == unit.team or target.current_hp <= 0:
-			continue
-
-		if is_in_attack_range(unit, target):
-			targets.append(target)
+		if child is Unit:
+			if CombatCalculator.can_attack(unit, child):
+				targets.append(child)
 
 	return targets
-
-
-func is_in_attack_range(attacker: Unit, defender: Unit) -> bool:
-	var distance: int = (
-		absi(attacker.grid_position.x - defender.grid_position.x)
-		+ absi(attacker.grid_position.y - defender.grid_position.y)
-	)
-
-	return (
-		distance >= attacker.min_attack_range
-		and distance <= attacker.max_attack_range
-	)
-
-
-func calculate_damage(attacker: Unit, defender: Unit) -> int:
-	if attacker.unit_data == null or defender.unit_data == null:
-		return 0
-
-	var attacker_class: UnitClassResource = attacker.unit_data.unit_class
-	var defender_class: UnitClassResource = defender.unit_data.unit_class
-
-	if attacker_class == null or defender_class == null:
-		return 0
-
-	return maxi(
-		0,
-		attacker_class.strength - defender_class.defense
-	)
 
 
 func select_unit(unit: Unit) -> void:
@@ -205,11 +170,14 @@ func select_unit(unit: Unit) -> void:
 		if cell != unit.grid_position:
 			grid.highlighted_cells.append(cell)
 
-	grid.attack_cells = grid.get_potential_attack_cells(
-		movement_cells,
-		unit.min_attack_range,
-		unit.max_attack_range
-	)
+	grid.attack_cells.clear()
+
+	if unit.equipped_weapon != null:
+		grid.attack_cells = grid.get_potential_attack_cells(
+			movement_cells,
+			unit.min_attack_range,
+			unit.max_attack_range
+		)
 
 	grid.queue_redraw()
 
@@ -303,6 +271,9 @@ func handle_attack_target(cell: Vector2i) -> void:
 	if target == null or target not in available_targets:
 		return
 
+	if not CombatCalculator.can_attack(selected_unit, target):
+		return
+
 	pending_target = target
 	show_combat_forecast()
 
@@ -316,39 +287,61 @@ func show_combat_forecast() -> void:
 	var attacker: Unit = selected_unit
 	var defender: Unit = pending_target
 
-	var attack_damage: int = calculate_damage(attacker, defender)
-	var defender_survives: bool = defender.current_hp > attack_damage
+	var attack_damage: int = CombatCalculator.calculate_damage(
+		attacker,
+		defender
+	)
+
+	var defender_survives: bool = (
+		defender.current_hp > attack_damage
+	)
 
 	var can_counter: bool = (
 		defender_survives
-		and is_in_attack_range(defender, attacker)
+		and CombatCalculator.can_counterattack(defender, attacker)
 	)
 
 	var counter_damage: int = 0
 
 	if can_counter:
-		counter_damage = calculate_damage(defender, attacker)
+		counter_damage = CombatCalculator.calculate_damage(
+			defender,
+			attacker
+		)
 
 	var attacker_name: String = attacker.unit_data.character_name
 	var defender_name: String = defender.unit_data.character_name
 
+	var attacker_weapon: String = (
+		attacker.equipped_weapon.weapon_name
+	)
+
+	var defender_weapon: String = "None"
+
+	if defender.equipped_weapon != null:
+		defender_weapon = defender.equipped_weapon.weapon_name
+
 	var forecast: String = (
-		attacker_name + " attacks " + defender_name
+		attacker_name + " vs " + defender_name
 		+ "\n\n"
 		+ attacker_name + " HP: " + str(attacker.current_hp)
 		+ "\n"
-		+ defender_name + " HP: " + str(defender.current_hp)
+		+ "Weapon: " + attacker_weapon
+		+ "\n"
+		+ "Damage: " + str(attack_damage)
 		+ "\n\n"
-		+ "Your damage: " + str(attack_damage)
+		+ defender_name + " HP: " + str(defender.current_hp)
+		+ "\n"
+		+ "Weapon: " + defender_weapon
 	)
 
 	if can_counter:
 		forecast += (
             "\n"
-			+ "Enemy counterattack: " + str(counter_damage)
+			+ "Counterattack damage: " + str(counter_damage)
 		)
 	else:
-		forecast += "\nEnemy counterattack: None"
+		forecast += "\nCounterattack: None"
 
 	forecast += "\n\nConfirm attack?"
 
@@ -366,13 +359,25 @@ func _on_combat_confirmed() -> void:
 	var attacker: Unit = selected_unit
 	var defender: Unit = pending_target
 
-	var attack_damage: int = calculate_damage(attacker, defender)
+	if not CombatCalculator.can_attack(attacker, defender):
+		interaction_state = InteractionState.TARGETING
+		pending_target = null
+		return
+
+	var attack_damage: int = CombatCalculator.calculate_damage(
+		attacker,
+		defender
+	)
 
 	apply_damage(defender, attack_damage)
 
 	if defender.current_hp > 0:
-		if is_in_attack_range(defender, attacker):
-			var counter_damage: int = calculate_damage(defender, attacker)
+		if CombatCalculator.can_counterattack(defender, attacker):
+			var counter_damage: int = CombatCalculator.calculate_damage(
+				defender,
+				attacker
+			)
+
 			apply_damage(attacker, counter_damage)
 
 	complete_unit_action()
@@ -458,6 +463,6 @@ func _on_phase_changed(team: Unit.Team) -> void:
 
 
 func run_enemy_phase() -> void:
-	# Enemy AI will be added later.
+	# Placeholder until enemy AI is implemented.
 	await get_tree().create_timer(1.5).timeout
 	turn_system.end_phase()

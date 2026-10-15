@@ -8,6 +8,7 @@ class_name_display = "Archer"
 max_hp = 18
 skill = 8
 speed = 6
+defense = 3
 resistance = 2
 min_attack_range = 2
 max_attack_range = 2

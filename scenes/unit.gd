@@ -31,18 +31,25 @@ var movement_range: int:
 		return unit_data.unit_class.movement_range
 
 
+var equipped_weapon: WeaponResource:
+	get:
+		if unit_data == null:
+			return null
+		return unit_data.equipped_weapon
+
+
 var min_attack_range: int:
 	get:
-		if unit_data == null or unit_data.unit_class == null:
-			return 1
-		return unit_data.unit_class.min_attack_range
+		if equipped_weapon == null:
+			return 0
+		return equipped_weapon.min_range
 
 
 var max_attack_range: int:
 	get:
-		if unit_data == null or unit_data.unit_class == null:
-			return 1
-		return unit_data.unit_class.max_attack_range
+		if equipped_weapon == null:
+			return 0
+		return equipped_weapon.max_range
 
 
 func _ready() -> void:
