@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="UnitResource" format=3 uid="uid://iup8ttdrpt45"]
+
+[ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_ysrle"]
+[ext_resource type="Resource" uid="uid://bkcrldislh4mi" path="res://resources/classes/archer.tres" id="2_ycwbx"]
+
+[resource]
+script = ExtResource("1_ysrle")
+character_name = "Rowan"
+unit_class = ExtResource("2_ycwbx")
+metadata/_custom_type_script = "uid://ds8xh6xaau5mw"

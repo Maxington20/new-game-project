@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UnitClassResource" format=3 uid="uid://qpst2mgicosl"]
+
+[ext_resource type="Script" uid="uid://brgpx6u5ytqsu" path="res://scripts/resources/unit_class_resource.gd" id="1_n1qi0"]
+
+[resource]
+script = ExtResource("1_n1qi0")
+class_name_display = "Knight"
+max_hp = 28
+strength = 7
+skill = 4
+speed = 3
+defense = 10
+movement_range = 4
+metadata/_custom_type_script = "uid://brgpx6u5ytqsu"

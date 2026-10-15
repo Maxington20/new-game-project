@@ -19,7 +19,11 @@ func _on_cell_selected(cell: Vector2i) -> void:
 	var unit := get_unit_at(cell)
 
 	if unit != null:
-		select_unit(unit)
+		if unit.team == Unit.Team.PLAYER:
+			select_unit(unit)
+		else:
+			deselect_unit()
+
 		return
 
 	if selected_unit != null and cell in grid.highlighted_cells:

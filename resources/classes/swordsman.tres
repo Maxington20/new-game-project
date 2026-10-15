@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="UnitClassResource" format=3 uid="uid://b8pyjuvmpocc1"]
+
+[ext_resource type="Script" uid="uid://brgpx6u5ytqsu" path="res://scripts/resources/unit_class_resource.gd" id="1_a5rom"]
+
+[resource]
+script = ExtResource("1_a5rom")
+strength = 6
+skill = 7
+speed = 8
+defense = 4
+resistance = 2
+metadata/_custom_type_script = "uid://brgpx6u5ytqsu"

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="UnitResource" format=3 uid="uid://cix0waxxi7v8u"]
+
+[ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_7s321"]
+[ext_resource type="Resource" uid="uid://b8pyjuvmpocc1" path="res://resources/classes/swordsman.tres" id="2_42tls"]
+
+[resource]
+script = ExtResource("1_7s321")
+character_name = "Alden"
+unit_class = ExtResource("2_42tls")
+metadata/_custom_type_script = "uid://ds8xh6xaau5mw"

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="UnitResource" format=3 uid="uid://df1qfw6mmh8wh"]
+
+[ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_1q0ry"]
+[ext_resource type="Resource" uid="uid://qpst2mgicosl" path="res://resources/classes/knight.tres" id="2_2ta15"]
+
+[resource]
+script = ExtResource("1_1q0ry")
+character_name = "Brienne"
+unit_class = ExtResource("2_2ta15")
+metadata/_custom_type_script = "uid://ds8xh6xaau5mw"
