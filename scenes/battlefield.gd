@@ -6,6 +6,7 @@ enum InteractionState {
 	UNIT_SELECTED,
 	UNIT_MOVING,
 	AWAITING_ACTION,
+	CHOOSING_WEAPON,
 	TARGETING,
 	COMBAT_FORECAST,
 	COMBAT_RESOLVING
@@ -44,6 +45,9 @@ var current_paths: Dictionary = {}
 
 var available_targets: Array[Unit] = []
 var pending_target: Unit = null
+var previous_weapon: WeaponResource = null
+var weapon_choices: Array[WeaponResource] = []
+var weapon_menu: PopupMenu
 
 var is_phase_transitioning: bool = false
 
@@ -58,6 +62,12 @@ func _ready() -> void:
 
 	combat_dialog.confirmed.connect(_on_combat_confirmed)
 	combat_dialog.canceled.connect(_on_combat_cancelled)
+
+	weapon_menu = PopupMenu.new()
+	weapon_menu.name = "WeaponSelectionMenu"
+	$CanvasLayer.add_child(weapon_menu)
+	weapon_menu.id_pressed.connect(_on_weapon_chosen)
+	weapon_menu.popup_hide.connect(_on_weapon_menu_hidden)
 
 	turn_system.initialize(get_all_units())
 
@@ -98,6 +108,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if interaction_state == InteractionState.TARGETING:
+		_restore_previous_weapon()
 		open_action_menu()
 		get_viewport().set_input_as_handled()
 		return
@@ -112,6 +123,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if interaction_state == InteractionState.COMBAT_FORECAST:
+		return
+
+	if interaction_state == InteractionState.CHOOSING_WEAPON:
 		return
 
 	if interaction_state == InteractionState.COMBAT_RESOLVING:
@@ -164,6 +178,7 @@ func _on_cell_selected(cell: Vector2i) -> void:
 
 		InteractionState.UNIT_MOVING, \
 		InteractionState.AWAITING_ACTION, \
+		InteractionState.CHOOSING_WEAPON, \
 		InteractionState.COMBAT_FORECAST, \
 		InteractionState.COMBAT_RESOLVING:
 			return
@@ -225,6 +240,7 @@ func select_unit(unit: Unit) -> void:
 	movement_path.clear()
 	available_targets.clear()
 	pending_target = null
+	previous_weapon = null
 
 	interaction_state = InteractionState.UNIT_SELECTED
 
@@ -265,6 +281,8 @@ func select_unit(unit: Unit) -> void:
 func deselect_unit() -> void:
 	selected_unit = null
 	pending_target = null
+	previous_weapon = null
+	weapon_choices.clear()
 
 	movement_path.clear()
 	current_paths.clear()
@@ -304,11 +322,33 @@ func move_selected_unit(destination: Vector2i) -> void:
 	open_action_menu()
 
 
+func _get_attackable_weapons(unit: Unit) -> Array[WeaponResource]:
+	var result: Array[WeaponResource] = []
+	if unit == null or unit.unit_data == null:
+		return result
+
+	var original: WeaponResource = unit.equipped_weapon
+	for weapon in unit.unit_data.inventory:
+		if weapon == null or weapon in result:
+			continue
+		unit.equipped_weapon = weapon
+		if not get_attack_targets(unit).is_empty():
+			result.append(weapon)
+	unit.equipped_weapon = original
+	return result
+
+
+func _restore_previous_weapon() -> void:
+	if selected_unit != null and previous_weapon != null:
+		selected_unit.equipped_weapon = previous_weapon
+	previous_weapon = null
+
+
 func open_action_menu() -> void:
 	interaction_state = InteractionState.AWAITING_ACTION
 	pending_target = null
-
-	available_targets = get_attack_targets(selected_unit)
+	available_targets.clear()
+	weapon_choices = _get_attackable_weapons(selected_unit)
 
 	grid.selected_cell = selected_unit.grid_position
 	grid.highlighted_cells.clear()
@@ -321,28 +361,66 @@ func open_action_menu() -> void:
 
 	action_menu.open_menu(
 		menu_position,
-		not available_targets.is_empty()
+		not weapon_choices.is_empty()
 	)
 
 
 func _on_attack_selected() -> void:
 	if interaction_state != InteractionState.AWAITING_ACTION:
 		return
+	if weapon_choices.is_empty():
+		return
 
+	previous_weapon = selected_unit.equipped_weapon
+	interaction_state = InteractionState.CHOOSING_WEAPON
+	action_menu.close_menu()
+
+	weapon_menu.clear()
+	for index in range(weapon_choices.size()):
+		var weapon: WeaponResource = weapon_choices[index]
+		weapon_menu.add_item(weapon.weapon_name, index)
+
+	weapon_menu.position = Vector2i(
+		selected_unit.global_position + Vector2(40, 0)
+	)
+	weapon_menu.popup()
+
+
+func _on_weapon_chosen(index: int) -> void:
+	if interaction_state != InteractionState.CHOOSING_WEAPON:
+		return
+	if index < 0 or index >= weapon_choices.size():
+		return
+
+	selected_unit.equipped_weapon = weapon_choices[index]
+	available_targets = get_attack_targets(selected_unit)
 	if available_targets.is_empty():
+		_restore_previous_weapon()
+		open_action_menu()
 		return
 
 	interaction_state = InteractionState.TARGETING
-	action_menu.close_menu()
-
 	grid.selected_cell = selected_unit.grid_position
 	grid.highlighted_cells.clear()
 	grid.attack_cells.clear()
-
 	for target in available_targets:
 		grid.attack_cells.append(target.grid_position)
-
 	grid.queue_redraw()
+
+
+func _on_weapon_menu_hidden() -> void:
+	# PopupMenu also emits popup_hide when an item is selected.
+	# Defer the cancellation check until the item selection signal has
+	# had a chance to transition us into TARGETING.
+	_handle_weapon_menu_dismissed.call_deferred()
+
+
+func _handle_weapon_menu_dismissed() -> void:
+	if interaction_state != InteractionState.CHOOSING_WEAPON:
+		return
+
+	_restore_previous_weapon()
+	open_action_menu()
 
 
 func handle_attack_target(cell: Vector2i) -> void:
@@ -473,6 +551,7 @@ func _on_combat_confirmed() -> void:
 	if defender.current_hp <= 0:
 		defender.hide()
 
+	previous_weapon = null
 	complete_unit_action()
 
 
@@ -488,6 +567,7 @@ func _on_wait_selected() -> void:
 	if interaction_state != InteractionState.AWAITING_ACTION:
 		return
 
+	previous_weapon = null
 	complete_unit_action()
 
 

@@ -37,6 +37,11 @@ var equipped_weapon: WeaponResource:
 			return null
 		return unit_data.equipped_weapon
 
+	set(value):
+		if unit_data == null:
+			return
+		unit_data.equipped_weapon = value
+
 
 var min_attack_range: int:
 	get:
