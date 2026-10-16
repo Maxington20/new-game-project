@@ -4,7 +4,18 @@
 [ext_resource type="Resource" uid="uid://dky7my7dsh343" path="res://resources/weapons/iron_sword.tres" id="1_nxkvl"]
 [ext_resource type="Script" uid="uid://d0p2qphidwj4q" path="res://scripts/resources/weapon_resource.gd" id="2_4c58w"]
 [ext_resource type="Resource" uid="uid://b8pyjuvmpocc1" path="res://resources/classes/swordsman.tres" id="2_42tls"]
+[ext_resource type="Script" uid="uid://t10sajlur7qt" path="res://scripts/resources/unit_stats_resource.gd" id="4_rua2d"]
 [ext_resource type="Script" uid="uid://2o0t780ij7ig" path="res://scripts/resources/weapon_proficiency_resource.gd" id="4_uoanq"]
+
+[sub_resource type="Resource" id="Resource_0koqq"]
+script = ExtResource("4_rua2d")
+strength = 7
+skill = 7
+speed = 8
+luck = 5
+defense = 4
+resistance = 2
+metadata/_custom_type_script = "uid://t10sajlur7qt"
 
 [sub_resource type="Resource" id="Resource_3w3tb"]
 script = ExtResource("4_uoanq")
@@ -15,6 +26,7 @@ metadata/_custom_type_script = "uid://2o0t780ij7ig"
 script = ExtResource("1_7s321")
 character_name = "Alden"
 unit_class = ExtResource("2_42tls")
+stats = SubResource("Resource_0koqq")
 equipped_weapon = ExtResource("1_nxkvl")
 inventory = Array[ExtResource("2_4c58w")]([ExtResource("1_nxkvl")])
 weapon_proficiencies = SubResource("Resource_3w3tb")

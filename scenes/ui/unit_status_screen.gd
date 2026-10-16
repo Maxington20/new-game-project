@@ -286,10 +286,10 @@ func show_unit(unit: Unit) -> void:
 
 	hp_label.text = (
 		"HP " + str(unit.current_hp)
-		+ " / " + str(unit_class.max_hp)
+		+ " / " + str(unit.stats.max_hp)
 	)
 
-	hp_bar.max_value = unit_class.max_hp
+	hp_bar.max_value = unit.stats.max_hp
 	hp_bar.value = unit.current_hp
 
 	refresh_page()
@@ -321,18 +321,20 @@ func refresh_page() -> void:
 
 
 func build_stats_page() -> void:
+	var stats: UnitStatsResource = inspected_unit.stats
 	var unit_class: UnitClassResource = (
 		inspected_unit.unit_data.unit_class
 	)
-
+	stats = inspected_unit.unit_data.stats
+	
 	var stat_grid := create_stat_grid(page_content)
 
-	add_stat(stat_grid, "STR", str(unit_class.strength))
-	add_stat(stat_grid, "SKL", str(unit_class.skill))
-	add_stat(stat_grid, "SPD", str(unit_class.speed))
-	add_stat(stat_grid, "LCK", str(unit_class.luck))
-	add_stat(stat_grid, "DEF", str(unit_class.defense))
-	add_stat(stat_grid, "RES", str(unit_class.resistance))
+	add_stat(stat_grid, "STR", str(stats.strength))
+	add_stat(stat_grid, "SKL", str(stats.skill))
+	add_stat(stat_grid, "SPD", str(stats.speed))
+	add_stat(stat_grid, "LCK", str(stats.luck))
+	add_stat(stat_grid, "DEF", str(stats.defense))
+	add_stat(stat_grid, "RES", str(stats.resistance))
 	add_stat(stat_grid, "MOV", str(unit_class.movement_range))
 	add_stat(stat_grid, "CON", str(unit_class.constitution))
 
@@ -344,7 +346,7 @@ func build_stats_page() -> void:
 		add_text(page_content, "Equipped: None")
 		return
 
-	var attack: int = unit_class.strength + weapon.might
+	var attack: int = inspected_unit.stats.strength + weapon.might
 	var attack_speed: int = (
 		CombatCalculator.get_attack_speed(inspected_unit)
 	)
@@ -397,7 +399,7 @@ func build_equipment_page() -> void:
 		inspected_unit.unit_data.unit_class
 	)
 
-	var attack: int = unit_class.strength + weapon.might
+	var attack: int = inspected_unit.stats.strength + weapon.might
 	var attack_speed: int = (
 		CombatCalculator.get_attack_speed(inspected_unit)
 	)

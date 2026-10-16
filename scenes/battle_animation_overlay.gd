@@ -133,11 +133,11 @@ func setup_battle(attacker: Unit, defender: Unit) -> void:
 	enemy_weapon.text = get_weapon_name(enemy_unit)
 
 	player_hp_bar.max_value = (
-		player_unit.unit_data.unit_class.max_hp
+		player_unit.stats.max_hp
 	)
 
 	enemy_hp_bar.max_value = (
-		enemy_unit.unit_data.unit_class.max_hp
+		enemy_unit.stats.max_hp
 	)
 
 	player_hp_bar.value = player_unit.current_hp
@@ -159,11 +159,11 @@ func get_weapon_name(unit: Unit) -> String:
 
 func update_hp_labels() -> void:
 	var player_max_hp: int = (
-		player_unit.unit_data.unit_class.max_hp
+		player_unit.stats.max_hp
 	)
 
 	var enemy_max_hp: int = (
-		enemy_unit.unit_data.unit_class.max_hp
+		enemy_unit.stats.max_hp
 	)
 
 	player_hp_label.text = (

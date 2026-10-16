@@ -1,4 +1,3 @@
-
 class_name UnitResource
 extends Resource
 
@@ -8,6 +7,9 @@ extends Resource
 @export_group("Progression")
 @export var level: int = 1
 @export var experience: int = 0
+
+@export_group("Character Stats")
+@export var stats: UnitStatsResource
 
 @export_group("Equipment")
 @export var equipped_weapon: WeaponResource
