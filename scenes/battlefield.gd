@@ -31,6 +31,10 @@ enum InteractionState {
 	$CanvasLayer/BattleAnimationOverlay
 )
 
+@onready var unit_status_screen: UnitStatusScreen = (
+	$CanvasLayer/UnitStatusScreen
+)
+
 var interaction_state: InteractionState = InteractionState.IDLE
 var selected_unit: Unit = null
 
@@ -79,14 +83,66 @@ func get_living_units(team: Unit.Team) -> Array[Unit]:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			if interaction_state == InteractionState.TARGETING:
-				get_viewport().set_input_as_handled()
-				open_action_menu()
+	if not event is InputEventMouseButton:
+		return
+
+	if not event.pressed:
+		return
+
+	if event.button_index != MOUSE_BUTTON_RIGHT:
+		return
+
+	if unit_status_screen.visible:
+		unit_status_screen.close_screen()
+		get_viewport().set_input_as_handled()
+		return
+
+	if interaction_state == InteractionState.TARGETING:
+		open_action_menu()
+		get_viewport().set_input_as_handled()
+		return
+
+	if is_phase_transitioning:
+		return
+
+	if turn_system.current_team != Unit.Team.PLAYER:
+		return
+
+	if interaction_state == InteractionState.UNIT_MOVING:
+		return
+
+	if interaction_state == InteractionState.COMBAT_FORECAST:
+		return
+
+	if interaction_state == InteractionState.COMBAT_RESOLVING:
+		return
+
+	var mouse_position: Vector2 = (
+		grid.get_global_mouse_position()
+	)
+
+	var local_position: Vector2 = (
+		grid.to_local(mouse_position)
+	)
+
+	var cell_size: int = 32
+
+	var cell := Vector2i(
+		floori(local_position.x / cell_size),
+		floori(local_position.y / cell_size)
+	)
+
+	var unit: Unit = get_unit_at(cell)
+
+	if unit != null:
+		unit_status_screen.show_unit(unit)
+		get_viewport().set_input_as_handled()
 
 
 func _on_cell_selected(cell: Vector2i) -> void:
+	if unit_status_screen.visible:
+		return
+
 	if is_phase_transitioning:
 		return
 
@@ -482,7 +538,6 @@ func _on_phase_changed(team: Unit.Team) -> void:
 
 
 func run_enemy_phase() -> void:
-	# A short pause makes the phase change readable.
 	await get_tree().create_timer(0.65).timeout
 
 	var enemies: Array[Unit] = get_living_units(
@@ -522,7 +577,6 @@ func run_enemy_phase() -> void:
 			enemy.move_along_path(path)
 			await enemy.movement_finished
 
-		# Allow a brief pause after movement.
 		await get_tree().create_timer(0.25).timeout
 
 		if (

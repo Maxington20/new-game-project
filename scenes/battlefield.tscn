@@ -14,6 +14,7 @@
 [ext_resource type="PackedScene" uid="uid://bvr5jlmkk8via" path="res://scenes/unit_action_menu.tscn" id="11_3xjfw"]
 [ext_resource type="Script" uid="uid://bq0sa366gffd6" path="res://scripts/enemy_ai.gd" id="12_3fwhu"]
 [ext_resource type="PackedScene" uid="uid://bbq3kuy61rfqf" path="res://scenes/battle_animation_overlay.tscn" id="13_bje3b"]
+[ext_resource type="PackedScene" uid="uid://rf0kxg2iu7wo" path="res://scenes/ui/unit_status_screen.tscn" id="15_3w3tb"]
 
 [node name="Battlefield" type="Node2D" unique_id=410340847]
 script = ExtResource("1_j68fe")
@@ -80,3 +81,5 @@ title = "Combat Forecast"
 ok_button_text = "Attack"
 
 [node name="BattleAnimationOverlay" parent="CanvasLayer" unique_id=1692097559 instance=ExtResource("13_bje3b")]
+
+[node name="UnitStatusScreen" parent="CanvasLayer" unique_id=1213005715 instance=ExtResource("15_3w3tb")]
