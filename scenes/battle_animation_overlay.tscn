@@ -1,0 +1,71 @@
+[gd_scene format=3 uid="uid://bbq3kuy61rfqf"]
+
+[ext_resource type="Script" uid="uid://dffutoksqa6q7" path="res://scenes/battle_animation_overlay.gd" id="1_q7rss"]
+
+[node name="BattleAnimationOverlay" type="Control" unique_id=1692097559]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_q7rss")
+
+[node name="Background" type="ColorRect" parent="." unique_id=975224801]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Ground" type="ColorRect" parent="Background" unique_id=40425784]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="EnemySprite" type="ColorRect" parent="." unique_id=65266276]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="PlayerSprite" type="ColorRect" parent="." unique_id=1468876033]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="EnemyInfo" type="VBoxContainer" parent="." unique_id=816295683]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="NameLabel" type="Label" parent="EnemyInfo" unique_id=1132128923]
+layout_mode = 2
+
+[node name="WeaponLabel" type="Label" parent="EnemyInfo" unique_id=961004368]
+layout_mode = 2
+
+[node name="HPBar" type="ProgressBar" parent="EnemyInfo" unique_id=86993106]
+layout_mode = 2
+
+[node name="HPLabel" type="Label" parent="EnemyInfo" unique_id=160365673]
+layout_mode = 2
+
+[node name="PlayerInfo" type="VBoxContainer" parent="." unique_id=1443472376]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="NameLabel" type="Label" parent="PlayerInfo" unique_id=1458793038]
+layout_mode = 2
+
+[node name="WeaponLabel" type="Label" parent="PlayerInfo" unique_id=1109857986]
+layout_mode = 2
+
+[node name="HPBar" type="ProgressBar" parent="PlayerInfo" unique_id=453668523]
+layout_mode = 2
+
+[node name="HPLabel" type="Label" parent="PlayerInfo" unique_id=407556728]
+layout_mode = 2
+
+[node name="CombatText" type="Label" parent="." unique_id=400642787]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0

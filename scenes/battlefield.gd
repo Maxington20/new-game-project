@@ -7,7 +7,8 @@ enum InteractionState {
 	UNIT_MOVING,
 	AWAITING_ACTION,
 	TARGETING,
-	COMBAT_FORECAST
+	COMBAT_FORECAST,
+	COMBAT_RESOLVING
 }
 
 @onready var grid = $Grid
@@ -15,6 +16,7 @@ enum InteractionState {
 @onready var phase_label: Label = $CanvasLayer/TurnUI/PhaseLabel
 @onready var action_menu: UnitActionMenu = $CanvasLayer/UnitActionMenu
 @onready var combat_dialog: ConfirmationDialog = $CanvasLayer/CombatForecastDialog
+@onready var battle_overlay: BattleAnimationOverlay = $CanvasLayer/BattleAnimationOverlay
 
 var interaction_state: InteractionState = InteractionState.IDLE
 var selected_unit: Unit = null
@@ -74,16 +76,13 @@ func _on_cell_selected(cell: Vector2i) -> void:
 		InteractionState.UNIT_SELECTED:
 			handle_movement_selection(cell)
 
-		InteractionState.UNIT_MOVING:
-			return
-
-		InteractionState.AWAITING_ACTION:
-			return
-
 		InteractionState.TARGETING:
 			handle_attack_target(cell)
 
-		InteractionState.COMBAT_FORECAST:
+		InteractionState.UNIT_MOVING, \
+		InteractionState.AWAITING_ACTION, \
+		InteractionState.COMBAT_FORECAST, \
+		InteractionState.COMBAT_RESOLVING:
 			return
 
 
@@ -278,6 +277,22 @@ func handle_attack_target(cell: Vector2i) -> void:
 	show_combat_forecast()
 
 
+func get_triangle_label(attacker: Unit, defender: Unit) -> String:
+	var advantage: int = (
+		CombatCalculator.get_weapon_triangle_advantage(
+			attacker,
+			defender
+		)
+	)
+
+	if advantage > 0:
+		return " [Advantage +]"
+	elif advantage < 0:
+		return " [Disadvantage -]"
+
+	return ""
+
+
 func get_forecast_line(attacker: Unit, defender: Unit) -> String:
 	if not CombatCalculator.can_attack(attacker, defender):
 		return "Cannot attack"
@@ -332,10 +347,12 @@ func show_combat_forecast() -> void:
 
 	var forecast: String = (
 		attacker_name + " (" + attacker_weapon + ")"
+		+ get_triangle_label(attacker, defender)
 		+ "\nHP: " + str(attacker.current_hp)
 		+ "\n" + get_forecast_line(attacker, defender)
 		+ "\n\n"
 		+ defender_name + " (" + defender_weapon + ")"
+		+ get_triangle_label(defender, attacker)
 		+ "\nHP: " + str(defender.current_hp)
 		+ "\n" + get_forecast_line(defender, attacker)
 		+ "\n\nConfirm attack?"
@@ -360,63 +377,22 @@ func _on_combat_confirmed() -> void:
 		interaction_state = InteractionState.TARGETING
 		return
 
-	# Determine follow-up eligibility before combat changes HP.
-	var attacker_follows: bool = CombatCalculator.can_follow_up(
-		attacker,
-		defender
-	)
+	interaction_state = InteractionState.COMBAT_RESOLVING
 
-	var defender_follows: bool = (
-		CombatCalculator.can_counterattack(defender, attacker)
-		and CombatCalculator.can_follow_up(defender, attacker)
-	)
+	grid.selected_cell = Vector2i(-1, -1)
+	grid.highlighted_cells.clear()
+	grid.attack_cells.clear()
+	grid.queue_redraw()
 
-	perform_strike(attacker, defender)
+	await battle_overlay.play_battle(attacker, defender)
 
-	if attacker.current_hp > 0 and defender.current_hp > 0:
-		if CombatCalculator.can_counterattack(defender, attacker):
-			perform_strike(defender, attacker)
+	if attacker.current_hp <= 0:
+		attacker.hide()
 
-	if attacker.current_hp > 0 and defender.current_hp > 0:
-		if attacker_follows:
-			perform_strike(attacker, defender)
-		elif defender_follows:
-			perform_strike(defender, attacker)
+	if defender.current_hp <= 0:
+		defender.hide()
 
 	complete_unit_action()
-
-
-func perform_strike(attacker: Unit, defender: Unit) -> void:
-	var result: Dictionary = CombatCalculator.resolve_strike(
-		attacker,
-		defender
-	)
-
-	if not result["valid"]:
-		return
-
-	var attacker_name: String = attacker.unit_data.character_name
-	var defender_name: String = defender.unit_data.character_name
-
-	if not result["hit"]:
-		print(attacker_name, " attacks ", defender_name, " — MISS!")
-		return
-
-	var damage: int = result["damage"]
-
-	if result["critical"]:
-		print(attacker_name, " lands a CRITICAL HIT!")
-
-	print(
-		attacker_name,
-		" hits ",
-		defender_name,
-		" for ",
-		damage,
-        " damage."
-	)
-
-	apply_damage(defender, damage)
 
 
 func _on_combat_cancelled() -> void:
@@ -425,22 +401,6 @@ func _on_combat_cancelled() -> void:
 
 	pending_target = null
 	interaction_state = InteractionState.TARGETING
-
-
-func apply_damage(unit: Unit, damage: int) -> void:
-	unit.current_hp = maxi(0, unit.current_hp - damage)
-
-	var unit_name: String = unit.unit_data.character_name
-
-	print(
-		unit_name,
-		" HP remaining: ",
-		unit.current_hp
-	)
-
-	if unit.current_hp <= 0:
-		unit.hide()
-		print(unit_name, " has been defeated!")
 
 
 func _on_wait_selected() -> void:
@@ -497,6 +457,5 @@ func _on_phase_changed(team: Unit.Team) -> void:
 
 
 func run_enemy_phase() -> void:
-	# Enemy AI will be implemented later.
 	await get_tree().create_timer(1.5).timeout
 	turn_system.end_phase()
