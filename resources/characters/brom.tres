@@ -2,6 +2,7 @@
 
 [ext_resource type="Resource" uid="uid://bqpu2ilk04bly" path="res://resources/weapons/iron_axe.tres" id="1_catm7"]
 [ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_n5gp2"]
+[ext_resource type="Script" uid="uid://d0p2qphidwj4q" path="res://scripts/resources/weapon_resource.gd" id="2_5n420"]
 [ext_resource type="Resource" uid="uid://clvfsds27s52n" path="res://resources/classes/fighter.tres" id="3_sb7kb"]
 [ext_resource type="Script" uid="uid://2o0t780ij7ig" path="res://scripts/resources/weapon_proficiency_resource.gd" id="4_sb7kb"]
 
@@ -15,5 +16,6 @@ script = ExtResource("1_n5gp2")
 character_name = "Brom"
 unit_class = ExtResource("3_sb7kb")
 equipped_weapon = ExtResource("1_catm7")
+inventory = Array[ExtResource("2_5n420")]([ExtResource("1_catm7")])
 weapon_proficiencies = SubResource("Resource_raquf")
 metadata/_custom_type_script = "uid://ds8xh6xaau5mw"

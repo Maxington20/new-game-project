@@ -12,5 +12,8 @@ extends Resource
 @export_group("Equipment")
 @export var equipped_weapon: WeaponResource
 
+@export_group("Inventory")
+@export var inventory: Array[WeaponResource] = []
+
 @export_group("Weapon Proficiencies")
 @export var weapon_proficiencies: WeaponProficiencyResource

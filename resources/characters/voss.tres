@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_7fhp6"]
 [ext_resource type="Resource" uid="uid://djgw8bjc3qv3w" path="res://resources/weapons/iron_lance.tres" id="1_o1hm1"]
+[ext_resource type="Script" uid="uid://d0p2qphidwj4q" path="res://scripts/resources/weapon_resource.gd" id="2_lpr2f"]
 [ext_resource type="Resource" uid="uid://qpst2mgicosl" path="res://resources/classes/knight.tres" id="2_o1hm1"]
 [ext_resource type="Script" uid="uid://2o0t780ij7ig" path="res://scripts/resources/weapon_proficiency_resource.gd" id="4_mcmo0"]
 
@@ -15,5 +16,6 @@ script = ExtResource("1_7fhp6")
 character_name = "Voss"
 unit_class = ExtResource("2_o1hm1")
 equipped_weapon = ExtResource("1_o1hm1")
+inventory = Array[ExtResource("2_lpr2f")]([ExtResource("1_o1hm1")])
 weapon_proficiencies = SubResource("Resource_41nkc")
 metadata/_custom_type_script = "uid://ds8xh6xaau5mw"

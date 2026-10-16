@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_awb3u"]
 [ext_resource type="Resource" uid="uid://dqt7cwbhsus5s" path="res://resources/weapons/iron_bow.tres" id="1_rok6s"]
+[ext_resource type="Script" uid="uid://d0p2qphidwj4q" path="res://scripts/resources/weapon_resource.gd" id="2_raquf"]
 [ext_resource type="Resource" uid="uid://bkcrldislh4mi" path="res://resources/classes/archer.tres" id="2_rok6s"]
 [ext_resource type="Script" uid="uid://2o0t780ij7ig" path="res://scripts/resources/weapon_proficiency_resource.gd" id="4_mhqi0"]
 
@@ -15,5 +16,6 @@ script = ExtResource("1_awb3u")
 character_name = "Silas"
 unit_class = ExtResource("2_rok6s")
 equipped_weapon = ExtResource("1_rok6s")
+inventory = Array[ExtResource("2_raquf")]([ExtResource("1_rok6s")])
 weapon_proficiencies = SubResource("Resource_h1idy")
 metadata/_custom_type_script = "uid://ds8xh6xaau5mw"
