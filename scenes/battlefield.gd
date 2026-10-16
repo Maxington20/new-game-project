@@ -72,6 +72,7 @@ func _ready() -> void:
 	weapon_menu.add_theme_stylebox_override("panel", GameUIStyle.make_panel_style())
 	$CanvasLayer.add_child(weapon_menu)
 	weapon_menu.popup_hide.connect(_on_weapon_menu_hidden)
+	weapon_menu.window_input.connect(_on_weapon_popup_input)
 
 	weapon_menu_buttons = VBoxContainer.new()
 	weapon_menu_buttons.add_theme_constant_override("separation", 10)
@@ -263,6 +264,27 @@ func get_living_units(team: Unit.Team) -> Array[Unit]:
 			units.append(unit)
 
 	return units
+
+
+func _on_weapon_popup_input(event: InputEvent) -> void:
+	# PopupPanel is a separate Window; battlefield._input() cannot see its clicks.
+	if interaction_state != InteractionState.CHOOSING_WEAPON:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		weapon_menu.hide()
+		_restore_previous_weapon()
+		open_action_menu()
+
+
+func _input(event: InputEvent) -> void:
+	# UI controls can consume right-clicks before _unhandled_input().
+	if not event is InputEventMouseButton:
+		return
+	if not event.pressed or event.button_index != MOUSE_BUTTON_RIGHT:
+		return
+	if unit_status_screen.visible:
+		unit_status_screen.close_screen()
+		get_viewport().set_input_as_handled()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -495,21 +517,39 @@ func move_selected_unit(destination: Vector2i) -> void:
 	open_action_menu()
 
 
-func _get_attackable_weapons(unit: Unit) -> Array[WeaponResource]:
+func _get_inventory_weapons(unit: Unit) -> Array[WeaponResource]:
 	var result: Array[WeaponResource] = []
 	if unit == null or unit.unit_data == null:
 		return result
 
-	var original: WeaponResource = unit.equipped_weapon
 	for weapon in unit.unit_data.inventory:
-		if weapon == null or weapon in result:
-			continue
-		unit.equipped_weapon = weapon
-		if not get_attack_targets(unit).is_empty():
+		if weapon != null and weapon not in result:
 			result.append(weapon)
-	unit.equipped_weapon = original
 	return result
 
+
+func _weapon_has_target(unit: Unit, weapon: WeaponResource) -> bool:
+	if unit == null or unit.unit_data == null:
+		return false
+	if not UnitInventory.can_equip(unit.unit_data, weapon):
+		return false
+
+	var original: WeaponResource = unit.equipped_weapon
+	unit.equipped_weapon = weapon
+	var has_target: bool = not get_attack_targets(unit).is_empty()
+	unit.equipped_weapon = original
+	return has_target
+
+
+func _get_weapon_rank_label(rank: WeaponResource.WeaponRank) -> String:
+	match rank:
+		WeaponResource.WeaponRank.E: return "E"
+		WeaponResource.WeaponRank.D: return "D"
+		WeaponResource.WeaponRank.C: return "C"
+		WeaponResource.WeaponRank.B: return "B"
+		WeaponResource.WeaponRank.A: return "A"
+		WeaponResource.WeaponRank.S: return "S"
+	return "?"
 
 func _restore_previous_weapon() -> void:
 	if selected_unit != null and previous_weapon != null:
@@ -521,7 +561,12 @@ func open_action_menu() -> void:
 	interaction_state = InteractionState.AWAITING_ACTION
 	pending_target = null
 	available_targets.clear()
-	weapon_choices = _get_attackable_weapons(selected_unit)
+	weapon_choices = _get_inventory_weapons(selected_unit)
+	var can_attack_now: bool = false
+	for weapon in weapon_choices:
+		if _weapon_has_target(selected_unit, weapon):
+			can_attack_now = true
+			break
 
 	grid.selected_cell = selected_unit.grid_position
 	grid.highlighted_cells.clear()
@@ -534,7 +579,7 @@ func open_action_menu() -> void:
 
 	action_menu.open_menu(
 		menu_position,
-		not weapon_choices.is_empty()
+		can_attack_now
 	)
 
 
@@ -555,7 +600,15 @@ func _on_attack_selected() -> void:
 	for index in range(weapon_choices.size()):
 		var weapon: WeaponResource = weapon_choices[index]
 		var button := Button.new()
-		button.text = weapon.weapon_name
+		var rank_text: String = _get_weapon_rank_label(weapon.required_rank)
+		var eligible: bool = UnitInventory.can_equip(selected_unit.unit_data, weapon)
+		var in_range: bool = _weapon_has_target(selected_unit, weapon) if eligible else false
+		button.text = weapon.weapon_name + "  [" + rank_text + "]"
+		if not eligible:
+			button.text += "  - Locked"
+		elif not in_range:
+			button.text += "  - Out of range"
+		button.disabled = not eligible or not in_range
 		button.custom_minimum_size = Vector2(180, 38)
 		GameUIStyle.style_button(button)
 		button.pressed.connect(_on_weapon_chosen.bind(index))
@@ -566,13 +619,23 @@ func _on_attack_selected() -> void:
 	)
 	var popup_height: int = 32 + weapon_choices.size() * 38 + maxi(0, weapon_choices.size() - 1) * 10
 	weapon_menu.popup(Rect2i(popup_position, Vector2i(220, popup_height)))
-	if weapon_menu_buttons.get_child_count() > 0:
-		(weapon_menu_buttons.get_child(0) as Button).grab_focus()
+	for child in weapon_menu_buttons.get_children():
+		var button := child as Button
+		if button != null and not button.disabled:
+			button.grab_focus()
+			break
 
 func _on_weapon_chosen(index: int) -> void:
 	if interaction_state != InteractionState.CHOOSING_WEAPON:
 		return
 	if index < 0 or index >= weapon_choices.size():
+		return
+	var chosen_weapon: WeaponResource = weapon_choices[index]
+	if selected_unit == null or selected_unit.unit_data == null:
+		return
+	if not UnitInventory.can_equip(selected_unit.unit_data, chosen_weapon):
+		return
+	if not _weapon_has_target(selected_unit, chosen_weapon):
 		return
 
 	selected_unit.equipped_weapon = weapon_choices[index]
@@ -690,7 +753,7 @@ func _on_combat_confirmed() -> void:
 	var attacker: Unit = selected_unit
 	var defender: Unit = pending_target
 
-	if not CombatCalculator.can_attack(attacker, defender):
+	if not UnitInventory.can_equip(attacker.unit_data, attacker.equipped_weapon) or not CombatCalculator.can_attack(attacker, defender):
 		pending_target = null
 		interaction_state = InteractionState.TARGETING
 		return
