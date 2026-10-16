@@ -56,12 +56,9 @@ var max_attack_range: int:
 			return 0
 		return equipped_weapon.max_range
 
-
 func _ready() -> void:
 	position = Vector2(grid_position * CELL_SIZE)
 	if unit_data != null and unit_data.unit_class != null:
-		# Each unit gets independent mutable character data and stats.
-		# Shared class and weapon templates remain untouched.
 		unit_data = unit_data.duplicate(false) as UnitResource
 		if unit_data.stats == null:
 			unit_data.stats = UnitStatsResource.from_class(unit_data.unit_class)
@@ -72,6 +69,16 @@ func _ready() -> void:
 		current_hp = unit_data.stats.max_hp
 	queue_redraw()
 
+# Call this on an active battlefield unit, rather than promoting
+# its UnitResource directly, so current HP and its visual update too.
+func promote() -> Dictionary:
+	var result: Dictionary = PromotionCalculator.promote(unit_data)
+	if not result["success"]:
+		return result
+	var hp_increase: int = int(result["stat_increases"]["max_hp"])
+	current_hp = clampi(current_hp + hp_increase, 0, stats.max_hp)
+	queue_redraw()
+	return result
 
 func _draw() -> void:
 	var color := PLAYER_COLOR if team == Team.PLAYER else ENEMY_COLOR
@@ -86,17 +93,16 @@ func _draw() -> void:
 	var text_position := Vector2((CELL_SIZE - text_size.x) / 2.0, (CELL_SIZE + text_size.y) / 2.0 - 3.0)
 	draw_string(font, text_position, class_letter, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
 
-
 func get_class_letter() -> String:
 	if unit_data == null or unit_data.unit_class == null:
 		return "?"
 	match unit_data.unit_class.class_name_display.to_lower():
 		"swordsman": return "S"
 		"knight": return "K"
+		"general": return "G"
 		"archer": return "A"
 		"fighter": return "F"
 		_: return "?"
-
 
 func move_along_path(path: Array[Vector2i]) -> void:
 	if is_moving:

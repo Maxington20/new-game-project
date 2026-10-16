@@ -1,9 +1,11 @@
 [gd_resource type="Resource" script_class="UnitClassResource" format=3 uid="uid://qpst2mgicosl"]
 
+[ext_resource type="Resource" uid="uid://bkq6ns1gwjr7i" path="res://resources/classes/general.tres" id="1_lxthm"]
 [ext_resource type="Script" uid="uid://brgpx6u5ytqsu" path="res://scripts/resources/unit_class_resource.gd" id="1_n1qi0"]
 
 [resource]
 script = ExtResource("1_n1qi0")
+promoted_class = ExtResource("1_lxthm")
 class_name_display = "Knight"
 max_hp = 28
 strength = 7
