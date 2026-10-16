@@ -43,6 +43,13 @@ var rank_name: Label
 var rank_weapon: Label
 var rank_before: Label
 var rank_after: Label
+var player_participated: bool = false
+var player_defeated_enemy: bool = false
+var exp_notice: PanelContainer
+var exp_name: Label
+var exp_gain: Label
+var exp_bar: ProgressBar
+var exp_total: Label
 
 
 func _ready() -> void:
@@ -61,6 +68,7 @@ func _ready() -> void:
 	combat_text.add_theme_font_size_override("font_size", 24)
 
 	_build_rank_notification()
+	_build_exp_notification()
 	hide()
 
 
@@ -183,6 +191,8 @@ func play_battle(attacker: Unit, defender: Unit) -> void:
 
 	is_playing = true
 	pending_rank_ups.clear()
+	player_participated = false
+	player_defeated_enemy = false
 	setup_battle(attacker, defender)
 
 	await get_tree().create_timer(0.45).timeout
@@ -209,6 +219,7 @@ func play_battle(attacker: Unit, defender: Unit) -> void:
 			await play_strike(defender, attacker)
 
 	await get_tree().create_timer(0.7).timeout
+	await _award_and_show_player_exp()
 	await _show_pending_rank_ups()
 
 	hide()
@@ -360,6 +371,87 @@ func _show_pending_rank_ups() -> void:
 	pending_rank_ups.clear()
 
 
+func _build_exp_notification() -> void:
+	exp_notice = PanelContainer.new()
+	exp_notice.name = "ExperienceNotice"
+	exp_notice.custom_minimum_size = Vector2(320, 0)
+	exp_notice.mouse_filter = Control.MOUSE_FILTER_STOP
+	exp_notice.add_theme_stylebox_override("panel", GameUIStyle.make_panel_style())
+	add_child(exp_notice)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	exp_notice.add_child(column)
+
+	var heading := Label.new()
+	heading.text = "EXPERIENCE GAINED"
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(heading, 13, true)
+	column.add_child(heading)
+
+	exp_name = Label.new()
+	exp_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(exp_name, 22)
+	column.add_child(exp_name)
+
+	exp_gain = Label.new()
+	exp_gain.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(exp_gain, 16)
+	column.add_child(exp_gain)
+
+	exp_bar = ProgressBar.new()
+	exp_bar.custom_minimum_size = Vector2(280, 16)
+	exp_bar.min_value = 0
+	exp_bar.max_value = 100
+	exp_bar.show_percentage = false
+	column.add_child(exp_bar)
+
+	exp_total = Label.new()
+	exp_total.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(exp_total, 13, true)
+	column.add_child(exp_total)
+	exp_notice.hide()
+
+
+func _award_and_show_player_exp() -> void:
+	if not player_participated or not is_instance_valid(player_unit):
+		return
+	if not is_instance_valid(enemy_unit):
+		return
+	if player_unit.unit_data == null or enemy_unit.unit_data == null:
+		return
+
+	var data: UnitResource = player_unit.unit_data
+	var gained: int = ExperienceCalculator.calculate_experience(
+		data.level,
+		enemy_unit.unit_data.level,
+		true,
+		player_defeated_enemy
+	)
+	var before: int = clampi(data.experience, 0, 99)
+	var after: int = mini(99, before + gained)
+	var actual_gain: int = after - before
+	data.experience = after
+
+	print("EXP: ", data.character_name, " | +", actual_gain,
+		" | ", before, " -> ", after)
+
+	exp_name.text = data.character_name
+	exp_gain.text = "+" + str(actual_gain) + " EXP"
+	exp_total.text = str(before) + " / 100 EXP"
+	exp_bar.value = before
+	exp_notice.show()
+	await get_tree().process_frame
+	exp_notice.position = (size - exp_notice.size) / 2.0
+
+	var tween := create_tween()
+	tween.tween_property(exp_bar, "value", float(after), 0.7)
+	await tween.finished
+	exp_total.text = str(after) + " / 100 EXP"
+	await get_tree().create_timer(1.0).timeout
+	exp_notice.hide()
+
+
 func play_strike(attacker: Unit, defender: Unit) -> void:
 	if not CombatCalculator.can_attack(attacker, defender):
 		return
@@ -401,6 +493,10 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 		attacking_sprite.position = starting_position
 		return
 
+	# A valid player strike counts once toward encounter EXP, even on a miss.
+	if attacker.team == Unit.Team.PLAYER:
+		player_participated = true
+
 	# Award once for each valid strike, regardless of hit or miss.
 	award_weapon_experience(attacker)
 
@@ -433,6 +529,8 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 		)
 
 		if defender.current_hp <= 0:
+			if attacker.team == Unit.Team.PLAYER and defender.team == Unit.Team.ENEMY:
+				player_defeated_enemy = true
 			combat_text.text = (
 				defender_name + " defeated!"
 			)
