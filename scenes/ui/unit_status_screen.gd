@@ -4,20 +4,30 @@ extends Control
 
 signal closed
 
-const PANEL_WIDTH: float = 460.0
-const PANEL_HEIGHT: float = 430.0
+const PANEL_WIDTH: float = 520.0
+const PANEL_HEIGHT: float = 560.0
+
+const PAGE_STATS: int = 0
+const PAGE_EQUIPMENT: int = 1
+const PAGE_PROFICIENCIES: int = 2
+const PAGE_COUNT: int = 3
 
 var inspected_unit: Unit = null
+var current_page: int = PAGE_STATS
 
 var background: ColorRect
 var main_panel: PanelContainer
+
+var page_label: Label
+var portrait_letter: Label
 var name_label: Label
 var class_label: Label
-var portrait_letter: Label
 var hp_label: Label
 var hp_bar: ProgressBar
-var stats_grid: GridContainer
-var weapon_label: Label
+
+var page_content: VBoxContainer
+var previous_button: Button
+var next_button: Button
 
 
 func _ready() -> void:
@@ -29,6 +39,7 @@ func _ready() -> void:
 
 
 func build_interface() -> void:
+	# Full-screen dimming background.
 	background = ColorRect.new()
 	background.color = Color(0, 0, 0, 0.65)
 	background.set_anchors_and_offsets_preset(
@@ -37,6 +48,7 @@ func build_interface() -> void:
 	background.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(background)
 
+	# Center a fixed-size window.
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(
 		Control.PRESET_FULL_RECT
@@ -44,21 +56,36 @@ func build_interface() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 
-	main_panel = PanelContainer.new()
-	main_panel.custom_minimum_size = Vector2(
+	var panel_frame := Control.new()
+	panel_frame.custom_minimum_size = Vector2(
 		PANEL_WIDTH,
 		PANEL_HEIGHT
+	)
+	panel_frame.size = Vector2(
+		PANEL_WIDTH,
+		PANEL_HEIGHT
+	)
+	center.add_child(panel_frame)
+
+	main_panel = PanelContainer.new()
+	main_panel.set_anchors_and_offsets_preset(
+		Control.PRESET_FULL_RECT
 	)
 	main_panel.add_theme_stylebox_override(
 		"panel",
 		GameUIStyle.make_panel_style()
 	)
-	center.add_child(main_panel)
+	panel_frame.add_child(main_panel)
 
+	# Main vertical layout.
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 12)
+	content.add_theme_constant_override(
+		"separation",
+		14
+	)
 	main_panel.add_child(content)
 
+	# Header
 	var header := HBoxContainer.new()
 	content.add_child(header)
 
@@ -68,13 +95,16 @@ func build_interface() -> void:
 	GameUIStyle.style_label(title, 18)
 	header.add_child(title)
 
-	var page_label := Label.new()
-	page_label.text = "Page 1 / 3"
+	page_label = Label.new()
 	GameUIStyle.style_label(page_label, 12, true)
 	header.add_child(page_label)
 
+	# Character summary
 	var summary := HBoxContainer.new()
-	summary.add_theme_constant_override("separation", 16)
+	summary.add_theme_constant_override(
+		"separation",
+		16
+	)
 	content.add_child(summary)
 
 	var portrait := PanelContainer.new()
@@ -91,33 +121,40 @@ func build_interface() -> void:
 	summary.add_child(portrait)
 
 	portrait_letter = Label.new()
-	portrait_letter.text = "?"
-	portrait_letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	portrait_letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	portrait_letter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	portrait_letter.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	portrait_letter.horizontal_alignment = (
+		HORIZONTAL_ALIGNMENT_CENTER
+	)
+	portrait_letter.vertical_alignment = (
+		VERTICAL_ALIGNMENT_CENTER
+	)
+	portrait_letter.size_flags_horizontal = (
+		Control.SIZE_EXPAND_FILL
+	)
+	portrait_letter.size_flags_vertical = (
+		Control.SIZE_EXPAND_FILL
+	)
 	GameUIStyle.style_label(portrait_letter, 36)
 	portrait.add_child(portrait_letter)
 
-	var character_details := VBoxContainer.new()
-	character_details.add_theme_constant_override(
+	var details := VBoxContainer.new()
+	details.add_theme_constant_override(
 		"separation",
 		5
 	)
-	character_details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	summary.add_child(character_details)
+	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary.add_child(details)
 
 	name_label = Label.new()
 	GameUIStyle.style_label(name_label, 22)
-	character_details.add_child(name_label)
+	details.add_child(name_label)
 
 	class_label = Label.new()
 	GameUIStyle.style_label(class_label, 12, true)
-	character_details.add_child(class_label)
+	details.add_child(class_label)
 
 	hp_label = Label.new()
 	GameUIStyle.style_label(hp_label, 14)
-	character_details.add_child(hp_label)
+	details.add_child(hp_label)
 
 	hp_bar = ProgressBar.new()
 	hp_bar.custom_minimum_size = Vector2(0, 10)
@@ -131,36 +168,60 @@ func build_interface() -> void:
 	hp_background.bg_color = GameUIStyle.BACKGROUND
 	hp_background.set_corner_radius_all(4)
 
-	hp_bar.add_theme_stylebox_override("fill", hp_fill)
+	hp_bar.add_theme_stylebox_override(
+		"fill",
+		hp_fill
+	)
 	hp_bar.add_theme_stylebox_override(
 		"background",
 		hp_background
 	)
-	character_details.add_child(hp_bar)
+	details.add_child(hp_bar)
 
 	add_separator(content)
 
-	stats_grid = GridContainer.new()
-	stats_grid.columns = 4
-	stats_grid.add_theme_constant_override("h_separation", 24)
-	stats_grid.add_theme_constant_override("v_separation", 12)
-	content.add_child(stats_grid)
+	# Fixed-height content area.
+	# No ScrollContainer and no scrollbars.
+	page_content = VBoxContainer.new()
+	page_content.custom_minimum_size.y = 285
+	page_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	page_content.add_theme_constant_override(
+		"separation",
+		12
+	)
+	content.add_child(page_content)
 
 	add_separator(content)
 
-	weapon_label = Label.new()
-	GameUIStyle.style_label(weapon_label, 13)
-	content.add_child(weapon_label)
+	# Navigation stays at the bottom.
+	var navigation := HBoxContainer.new()
+	navigation.add_theme_constant_override(
+		"separation",
+		8
+	)
+	content.add_child(navigation)
 
-	var footer := HBoxContainer.new()
-	footer.alignment = BoxContainer.ALIGNMENT_END
-	content.add_child(footer)
+	previous_button = Button.new()
+	previous_button.text = "← Previous"
+	GameUIStyle.style_button(previous_button)
+	previous_button.pressed.connect(previous_page)
+	navigation.add_child(previous_button)
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	navigation.add_child(spacer)
+
+	next_button = Button.new()
+	next_button.text = "Next →"
+	GameUIStyle.style_button(next_button)
+	next_button.pressed.connect(next_page)
+	navigation.add_child(next_button)
 
 	var close_button := Button.new()
 	close_button.text = "Close"
 	GameUIStyle.style_button(close_button)
 	close_button.pressed.connect(close_screen)
-	footer.add_child(close_button)
+	navigation.add_child(close_button)
 
 
 func add_separator(parent: VBoxContainer) -> void:
@@ -172,18 +233,64 @@ func add_separator(parent: VBoxContainer) -> void:
 	parent.add_child(separator)
 
 
-func add_stat(stat_name: String, stat_value: int) -> void:
+func add_text(
+	parent: Node,
+	value: String,
+	font_size: int = 14,
+	muted: bool = false
+) -> Label:
 	var label := Label.new()
-	label.text = stat_name
-	GameUIStyle.style_label(label, 13, true)
-	stats_grid.add_child(label)
+	label.text = value
+	GameUIStyle.style_label(
+		label,
+		font_size,
+		muted
+	)
+	parent.add_child(label)
+	return label
 
-	var value := Label.new()
-	value.text = str(stat_value)
+
+func add_stat(
+	stat_grid: GridContainer,
+	stat_name: String,
+	stat_value: String
+) -> void:
+	var label := add_text(
+		stat_grid,
+		stat_name,
+		13,
+		true
+	)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var value := add_text(
+		stat_grid,
+		stat_value,
+		14
+	)
 	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	GameUIStyle.style_label(value, 14)
-	stats_grid.add_child(value)
+
+
+func create_stat_grid(parent: Node) -> GridContainer:
+	var stat_grid := GridContainer.new()
+	stat_grid.columns = 4
+	stat_grid.add_theme_constant_override(
+		"h_separation",
+		24
+	)
+	stat_grid.add_theme_constant_override(
+		"v_separation",
+		12
+	)
+	parent.add_child(stat_grid)
+	return stat_grid
+
+
+func clear_page() -> void:
+	for child in page_content.get_children():
+		page_content.remove_child(child)
+		child.queue_free()
 
 
 func show_unit(unit: Unit) -> void:
@@ -194,6 +301,7 @@ func show_unit(unit: Unit) -> void:
 		return
 
 	inspected_unit = unit
+	current_page = PAGE_STATS
 
 	var data: UnitResource = unit.unit_data
 	var unit_class: UnitClassResource = data.unit_class
@@ -215,37 +323,255 @@ func show_unit(unit: Unit) -> void:
 	hp_bar.max_value = unit_class.max_hp
 	hp_bar.value = unit.current_hp
 
-	# Remove old stat rows immediately before rebuilding.
-	for child in stats_grid.get_children():
-		stats_grid.remove_child(child)
-		child.queue_free()
-
-	add_stat("STR", unit_class.strength)
-	add_stat("SKL", unit_class.skill)
-	add_stat("SPD", unit_class.speed)
-	add_stat("LCK", unit_class.luck)
-	add_stat("DEF", unit_class.defense)
-	add_stat("RES", unit_class.resistance)
-	add_stat("MOV", unit_class.movement_range)
-	add_stat("CON", unit_class.constitution)
-
-	if unit.equipped_weapon != null:
-		weapon_label.text = (
-            "Equipped: "
-			+ unit.equipped_weapon.weapon_name
-			+ "  |  ATK "
-			+ str(
-				unit_class.strength
-				+ unit.equipped_weapon.might
-			)
-			+ "  |  AS "
-			+ str(CombatCalculator.get_attack_speed(unit))
-		)
-	else:
-		weapon_label.text = "Equipped: None"
+	refresh_page()
 
 	show()
 	move_to_front()
+
+
+func refresh_page() -> void:
+	if not is_instance_valid(inspected_unit):
+		return
+
+	clear_page()
+
+	page_label.text = (
+		"Page " + str(current_page + 1)
+		+ " / " + str(PAGE_COUNT)
+	)
+
+	previous_button.disabled = current_page == 0
+	next_button.disabled = (
+		current_page == PAGE_COUNT - 1
+	)
+
+	match current_page:
+		PAGE_STATS:
+			build_stats_page()
+
+		PAGE_EQUIPMENT:
+			build_equipment_page()
+
+		PAGE_PROFICIENCIES:
+			build_proficiencies_page()
+
+
+func build_stats_page() -> void:
+	var unit_class: UnitClassResource = (
+		inspected_unit.unit_data.unit_class
+	)
+
+	var stat_grid := create_stat_grid(page_content)
+
+	add_stat(stat_grid, "STR", str(unit_class.strength))
+	add_stat(stat_grid, "SKL", str(unit_class.skill))
+	add_stat(stat_grid, "SPD", str(unit_class.speed))
+	add_stat(stat_grid, "LCK", str(unit_class.luck))
+	add_stat(stat_grid, "DEF", str(unit_class.defense))
+	add_stat(stat_grid, "RES", str(unit_class.resistance))
+	add_stat(stat_grid, "MOV", str(unit_class.movement_range))
+	add_stat(stat_grid, "CON", str(unit_class.constitution))
+
+	add_separator(page_content)
+
+	var weapon: WeaponResource = (
+		inspected_unit.equipped_weapon
+	)
+
+	if weapon == null:
+		add_text(page_content, "Equipped: None")
+		return
+
+	var attack: int = (
+		unit_class.strength + weapon.might
+	)
+
+	var attack_speed: int = (
+		CombatCalculator.get_attack_speed(
+			inspected_unit
+		)
+	)
+
+	add_text(
+		page_content,
+		"Equipped: " + weapon.weapon_name
+	)
+
+	add_text(
+		page_content,
+		"ATK " + str(attack)
+		+ "  ·  AS " + str(attack_speed),
+		13,
+		true
+	)
+
+
+func build_equipment_page() -> void:
+	var weapon: WeaponResource = (
+		inspected_unit.equipped_weapon
+	)
+
+	add_text(
+		page_content,
+		"EQUIPPED WEAPON",
+		15
+	)
+
+	if weapon == null:
+		add_text(
+			page_content,
+			"No weapon equipped.",
+			14,
+			true
+		)
+		return
+
+	var weapon_type: String = get_weapon_type_name(
+		weapon.weapon_type
+	)
+
+	var range_text: String = str(
+		weapon.min_range
+	)
+
+	if weapon.min_range != weapon.max_range:
+		range_text += "-" + str(
+			weapon.max_range
+		)
+
+	add_text(
+		page_content,
+		weapon.weapon_name,
+		20
+	)
+
+	add_text(
+		page_content,
+		weapon_type + " · Range " + range_text,
+		13,
+		true
+	)
+
+	add_separator(page_content)
+
+	var stat_grid := create_stat_grid(page_content)
+
+	add_stat(stat_grid, "Might", str(weapon.might))
+	add_stat(stat_grid, "Hit", str(weapon.hit))
+	add_stat(stat_grid, "Critical", str(weapon.critical))
+	add_stat(stat_grid, "Weight", str(weapon.weight))
+
+	var unit_class: UnitClassResource = (
+		inspected_unit.unit_data.unit_class
+	)
+
+	var attack: int = (
+		unit_class.strength + weapon.might
+	)
+
+	var attack_speed: int = (
+		CombatCalculator.get_attack_speed(
+			inspected_unit
+		)
+	)
+
+	add_stat(stat_grid, "Attack", str(attack))
+	add_stat(stat_grid, "Atk Speed", str(attack_speed))
+
+	add_separator(page_content)
+
+	add_text(
+		page_content,
+		get_weapon_triangle_description(
+			weapon.weapon_type
+		),
+		12,
+		true
+	)
+
+
+func build_proficiencies_page() -> void:
+	add_text(
+		page_content,
+		"WEAPON PROFICIENCIES",
+		15
+	)
+
+	add_text(
+		page_content,
+		"Weapon ranks are not implemented yet.",
+		13,
+		true
+	)
+
+	add_separator(page_content)
+
+	add_text(
+		page_content,
+		"SUPPORT RELATIONSHIPS",
+		15
+	)
+
+	add_text(
+		page_content,
+		"Support relationships are not implemented yet.",
+		13,
+		true
+	)
+
+
+func get_weapon_type_name(
+	weapon_type: WeaponResource.WeaponType
+) -> String:
+	match weapon_type:
+		WeaponResource.WeaponType.SWORD:
+			return "Sword"
+		WeaponResource.WeaponType.LANCE:
+			return "Lance"
+		WeaponResource.WeaponType.AXE:
+			return "Axe"
+		WeaponResource.WeaponType.BOW:
+			return "Bow"
+		WeaponResource.WeaponType.ANIMA:
+			return "Anima"
+		WeaponResource.WeaponType.LIGHT:
+			return "Light"
+		WeaponResource.WeaponType.DARK:
+			return "Dark"
+		WeaponResource.WeaponType.STAFF:
+			return "Staff"
+
+	return "Unknown"
+
+
+func get_weapon_triangle_description(
+	weapon_type: WeaponResource.WeaponType
+) -> String:
+	match weapon_type:
+		WeaponResource.WeaponType.SWORD:
+			return "Sword beats Axe, loses to Lance."
+		WeaponResource.WeaponType.LANCE:
+			return "Lance beats Sword, loses to Axe."
+		WeaponResource.WeaponType.AXE:
+			return "Axe beats Lance, loses to Sword."
+		_:
+			return "No physical weapon triangle advantage."
+
+
+func previous_page() -> void:
+	if current_page <= 0:
+		return
+
+	current_page -= 1
+	refresh_page()
+
+
+func next_page() -> void:
+	if current_page >= PAGE_COUNT - 1:
+		return
+
+	current_page += 1
+	refresh_page()
 
 
 func close_screen() -> void:
@@ -261,18 +587,21 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not visible:
 		return
 
-	if event is InputEventKey:
-		if event.pressed and not event.echo:
-			if event.keycode == KEY_ESCAPE:
-				close_screen()
-				get_viewport().set_input_as_handled()
-
-
-func _gui_input(event: InputEvent) -> void:
-	if not visible:
+	if not event is InputEventKey:
 		return
 
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+	if not event.pressed or event.echo:
+		return
+
+	match event.keycode:
+		KEY_ESCAPE:
 			close_screen()
-			accept_event()
+			get_viewport().set_input_as_handled()
+
+		KEY_LEFT:
+			previous_page()
+			get_viewport().set_input_as_handled()
+
+		KEY_RIGHT:
+			next_page()
+			get_viewport().set_input_as_handled()
