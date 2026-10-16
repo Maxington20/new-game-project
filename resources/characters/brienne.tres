@@ -3,10 +3,17 @@
 [ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_1q0ry"]
 [ext_resource type="Resource" uid="uid://djgw8bjc3qv3w" path="res://resources/weapons/iron_lance.tres" id="1_ajj1w"]
 [ext_resource type="Resource" uid="uid://qpst2mgicosl" path="res://resources/classes/knight.tres" id="2_2ta15"]
+[ext_resource type="Script" uid="uid://2o0t780ij7ig" path="res://scripts/resources/weapon_proficiency_resource.gd" id="4_1txod"]
+
+[sub_resource type="Resource" id="Resource_htrwf"]
+script = ExtResource("4_1txod")
+lance_exp = 31
+metadata/_custom_type_script = "uid://2o0t780ij7ig"
 
 [resource]
 script = ExtResource("1_1q0ry")
 character_name = "Brienne"
 unit_class = ExtResource("2_2ta15")
 equipped_weapon = ExtResource("1_ajj1w")
+weapon_proficiencies = SubResource("Resource_htrwf")
 metadata/_custom_type_script = "uid://ds8xh6xaau5mw"

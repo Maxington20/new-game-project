@@ -3,10 +3,17 @@
 [ext_resource type="Resource" uid="uid://dqt7cwbhsus5s" path="res://resources/weapons/iron_bow.tres" id="1_rgcty"]
 [ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_ysrle"]
 [ext_resource type="Resource" uid="uid://bkcrldislh4mi" path="res://resources/classes/archer.tres" id="2_ycwbx"]
+[ext_resource type="Script" uid="uid://2o0t780ij7ig" path="res://scripts/resources/weapon_proficiency_resource.gd" id="4_ovini"]
+
+[sub_resource type="Resource" id="Resource_bbsew"]
+script = ExtResource("4_ovini")
+bow_exp = 31
+metadata/_custom_type_script = "uid://2o0t780ij7ig"
 
 [resource]
 script = ExtResource("1_ysrle")
 character_name = "Rowan"
 unit_class = ExtResource("2_ycwbx")
 equipped_weapon = ExtResource("1_rgcty")
+weapon_proficiencies = SubResource("Resource_bbsew")
 metadata/_custom_type_script = "uid://ds8xh6xaau5mw"

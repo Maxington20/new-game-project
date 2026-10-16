@@ -3,10 +3,17 @@
 [ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_7s321"]
 [ext_resource type="Resource" uid="uid://dky7my7dsh343" path="res://resources/weapons/iron_sword.tres" id="1_nxkvl"]
 [ext_resource type="Resource" uid="uid://b8pyjuvmpocc1" path="res://resources/classes/swordsman.tres" id="2_42tls"]
+[ext_resource type="Script" uid="uid://2o0t780ij7ig" path="res://scripts/resources/weapon_proficiency_resource.gd" id="4_uoanq"]
+
+[sub_resource type="Resource" id="Resource_3w3tb"]
+script = ExtResource("4_uoanq")
+sword_exp = 31
+metadata/_custom_type_script = "uid://2o0t780ij7ig"
 
 [resource]
 script = ExtResource("1_7s321")
 character_name = "Alden"
 unit_class = ExtResource("2_42tls")
 equipped_weapon = ExtResource("1_nxkvl")
+weapon_proficiencies = SubResource("Resource_3w3tb")
 metadata/_custom_type_script = "uid://ds8xh6xaau5mw"

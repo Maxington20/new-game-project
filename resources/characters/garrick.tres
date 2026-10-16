@@ -3,10 +3,17 @@
 [ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_bihc7"]
 [ext_resource type="Resource" uid="uid://dky7my7dsh343" path="res://resources/weapons/iron_sword.tres" id="1_foj1a"]
 [ext_resource type="Resource" uid="uid://b8pyjuvmpocc1" path="res://resources/classes/swordsman.tres" id="2_foj1a"]
+[ext_resource type="Script" uid="uid://2o0t780ij7ig" path="res://scripts/resources/weapon_proficiency_resource.gd" id="4_1hkgj"]
+
+[sub_resource type="Resource" id="Resource_aq1qs"]
+script = ExtResource("4_1hkgj")
+sword_exp = 1
+metadata/_custom_type_script = "uid://2o0t780ij7ig"
 
 [resource]
 script = ExtResource("1_bihc7")
 character_name = "Garrick"
 unit_class = ExtResource("2_foj1a")
 equipped_weapon = ExtResource("1_foj1a")
+weapon_proficiencies = SubResource("Resource_aq1qs")
 metadata/_custom_type_script = "uid://ds8xh6xaau5mw"
