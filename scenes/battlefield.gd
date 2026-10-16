@@ -13,10 +13,23 @@ enum InteractionState {
 
 @onready var grid = $Grid
 @onready var turn_system: BattleTurnSystem = $BattleTurnSystem
-@onready var phase_label: Label = $CanvasLayer/TurnUI/PhaseLabel
-@onready var action_menu: UnitActionMenu = $CanvasLayer/UnitActionMenu
-@onready var combat_dialog: ConfirmationDialog = $CanvasLayer/CombatForecastDialog
-@onready var battle_overlay: BattleAnimationOverlay = $CanvasLayer/BattleAnimationOverlay
+@onready var enemy_ai: EnemyAI = $EnemyAI
+
+@onready var phase_label: Label = (
+	$CanvasLayer/TurnUI/PhaseLabel
+)
+
+@onready var action_menu: UnitActionMenu = (
+	$CanvasLayer/UnitActionMenu
+)
+
+@onready var combat_dialog: ConfirmationDialog = (
+	$CanvasLayer/CombatForecastDialog
+)
+
+@onready var battle_overlay: BattleAnimationOverlay = (
+	$CanvasLayer/BattleAnimationOverlay
+)
 
 var interaction_state: InteractionState = InteractionState.IDLE
 var selected_unit: Unit = null
@@ -42,13 +55,27 @@ func _ready() -> void:
 	combat_dialog.confirmed.connect(_on_combat_confirmed)
 	combat_dialog.canceled.connect(_on_combat_cancelled)
 
-	var battle_units: Array[Unit] = []
+	turn_system.initialize(get_all_units())
+
+
+func get_all_units() -> Array[Unit]:
+	var units: Array[Unit] = []
 
 	for child in get_children():
 		if child is Unit:
-			battle_units.append(child)
+			units.append(child)
 
-	turn_system.initialize(battle_units)
+	return units
+
+
+func get_living_units(team: Unit.Team) -> Array[Unit]:
+	var units: Array[Unit] = []
+
+	for unit in get_all_units():
+		if unit.team == team and unit.current_hp > 0:
+			units.append(unit)
+
+	return units
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -108,10 +135,9 @@ func handle_movement_selection(cell: Vector2i) -> void:
 
 
 func get_unit_at(cell: Vector2i) -> Unit:
-	for child in get_children():
-		if child is Unit:
-			if child.current_hp > 0 and child.grid_position == cell:
-				return child
+	for unit in get_all_units():
+		if unit.current_hp > 0 and unit.grid_position == cell:
+			return unit
 
 	return null
 
@@ -119,10 +145,9 @@ func get_unit_at(cell: Vector2i) -> Unit:
 func get_occupied_cells(excluded_unit: Unit) -> Array[Vector2i]:
 	var occupied: Array[Vector2i] = []
 
-	for child in get_children():
-		if child is Unit:
-			if child != excluded_unit and child.current_hp > 0:
-				occupied.append(child.grid_position)
+	for unit in get_all_units():
+		if unit != excluded_unit and unit.current_hp > 0:
+			occupied.append(unit.grid_position)
 
 	return occupied
 
@@ -130,10 +155,9 @@ func get_occupied_cells(excluded_unit: Unit) -> Array[Vector2i]:
 func get_attack_targets(unit: Unit) -> Array[Unit]:
 	var targets: Array[Unit] = []
 
-	for child in get_children():
-		if child is Unit:
-			if CombatCalculator.can_attack(unit, child):
-				targets.append(child)
+	for other_unit in get_all_units():
+		if CombatCalculator.can_attack(unit, other_unit):
+			targets.append(other_unit)
 
 	return targets
 
@@ -141,6 +165,7 @@ func get_attack_targets(unit: Unit) -> Array[Unit]:
 func select_unit(unit: Unit) -> void:
 	selected_unit = unit
 	original_cell = unit.grid_position
+
 	movement_path.clear()
 	available_targets.clear()
 	pending_target = null
@@ -457,5 +482,68 @@ func _on_phase_changed(team: Unit.Team) -> void:
 
 
 func run_enemy_phase() -> void:
-	await get_tree().create_timer(1.5).timeout
+	# A short pause makes the phase change readable.
+	await get_tree().create_timer(0.65).timeout
+
+	var enemies: Array[Unit] = get_living_units(
+		Unit.Team.ENEMY
+	)
+
+	for enemy in enemies:
+		if enemy.current_hp <= 0:
+			continue
+
+		var players: Array[Unit] = get_living_units(
+			Unit.Team.PLAYER
+		)
+
+		if players.is_empty():
+			break
+
+		var occupied: Array[Vector2i] = (
+			get_occupied_cells(enemy)
+		)
+
+		var action: Dictionary = enemy_ai.choose_action(
+			enemy,
+			players,
+			grid,
+			occupied
+		)
+
+		if action.is_empty():
+			turn_system.mark_unit_acted(enemy)
+			continue
+
+		var path: Array[Vector2i] = action["path"]
+		var target: Unit = action["target"]
+
+		if not path.is_empty():
+			enemy.move_along_path(path)
+			await enemy.movement_finished
+
+		# Allow a brief pause after movement.
+		await get_tree().create_timer(0.25).timeout
+
+		if (
+			target != null
+			and target.current_hp > 0
+			and CombatCalculator.can_attack(enemy, target)
+		):
+			await battle_overlay.play_battle(
+				enemy,
+				target
+			)
+
+			if enemy.current_hp <= 0:
+				enemy.hide()
+
+			if target.current_hp <= 0:
+				target.hide()
+
+		if enemy.current_hp > 0:
+			turn_system.mark_unit_acted(enemy)
+
+		await get_tree().create_timer(0.35).timeout
+
 	turn_system.end_phase()

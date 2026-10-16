@@ -12,6 +12,7 @@
 [ext_resource type="Script" uid="uid://bmlrgnp67bpqy" path="res://scripts/battle_turn_system.gd" id="10_3avj7"]
 [ext_resource type="Resource" uid="uid://b0ids658eiepj" path="res://resources/characters/brom.tres" id="10_udire"]
 [ext_resource type="PackedScene" uid="uid://bvr5jlmkk8via" path="res://scenes/unit_action_menu.tscn" id="11_3xjfw"]
+[ext_resource type="Script" uid="uid://bq0sa366gffd6" path="res://scripts/enemy_ai.gd" id="12_3fwhu"]
 [ext_resource type="PackedScene" uid="uid://bbq3kuy61rfqf" path="res://scenes/battle_animation_overlay.tscn" id="13_bje3b"]
 
 [node name="Battlefield" type="Node2D" unique_id=410340847]
@@ -54,6 +55,9 @@ grid_position = Vector2i(11, 8)
 
 [node name="BattleTurnSystem" type="Node" parent="." unique_id=1373098752]
 script = ExtResource("10_3avj7")
+
+[node name="EnemyAI" type="Node" parent="." unique_id=1427404406]
+script = ExtResource("12_3fwhu")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1142833532]
 
