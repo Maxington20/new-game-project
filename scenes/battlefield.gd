@@ -47,7 +47,11 @@ var available_targets: Array[Unit] = []
 var pending_target: Unit = null
 var previous_weapon: WeaponResource = null
 var weapon_choices: Array[WeaponResource] = []
-var weapon_menu: PopupMenu
+var weapon_menu: PopupPanel
+var weapon_menu_buttons: VBoxContainer
+var forecast_overlay: Control
+var forecast_attacker_fields: Dictionary = {}
+var forecast_defender_fields: Dictionary = {}
 
 var is_phase_transitioning: bool = false
 
@@ -60,16 +64,185 @@ func _ready() -> void:
 	action_menu.wait_selected.connect(_on_wait_selected)
 	action_menu.cancel_selected.connect(_on_cancel_selected)
 
-	combat_dialog.confirmed.connect(_on_combat_confirmed)
-	combat_dialog.canceled.connect(_on_combat_cancelled)
+	combat_dialog.hide()
+	_build_forecast_overlay()
 
-	weapon_menu = PopupMenu.new()
+	weapon_menu = PopupPanel.new()
 	weapon_menu.name = "WeaponSelectionMenu"
+	weapon_menu.add_theme_stylebox_override("panel", GameUIStyle.make_panel_style())
 	$CanvasLayer.add_child(weapon_menu)
-	weapon_menu.id_pressed.connect(_on_weapon_chosen)
 	weapon_menu.popup_hide.connect(_on_weapon_menu_hidden)
 
+	weapon_menu_buttons = VBoxContainer.new()
+	weapon_menu_buttons.add_theme_constant_override("separation", 10)
+	weapon_menu.add_child(weapon_menu_buttons)
+
 	turn_system.initialize(get_all_units())
+
+
+
+func _build_forecast_overlay() -> void:
+	forecast_overlay = Control.new()
+	forecast_overlay.name = "StyledCombatForecast"
+	forecast_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	forecast_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	$CanvasLayer.add_child(forecast_overlay)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.65)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	forecast_overlay.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	forecast_overlay.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size.x = 520
+	panel.add_theme_stylebox_override("panel", GameUIStyle.make_panel_style())
+	center.add_child(panel)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	panel.add_child(column)
+
+	var header := HBoxContainer.new()
+	column.add_child(header)
+	var heading := Label.new()
+	heading.text = "COMBAT FORECAST"
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	GameUIStyle.style_label(heading, 18)
+	header.add_child(heading)
+	var preview := Label.new()
+	preview.text = "Preview"
+	GameUIStyle.style_label(preview, 12, true)
+	header.add_child(preview)
+
+	var sides := HBoxContainer.new()
+	sides.add_theme_constant_override("separation", 10)
+	column.add_child(sides)
+	forecast_attacker_fields = _build_forecast_side(sides)
+	forecast_defender_fields = _build_forecast_side(sides)
+
+	var footer := HBoxContainer.new()
+	footer.add_theme_constant_override("separation", 10)
+	column.add_child(footer)
+
+	var confirm := Button.new()
+	confirm.text = "Confirm Attack"
+	confirm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	GameUIStyle.style_button(confirm)
+	confirm.pressed.connect(_on_combat_confirmed)
+	footer.add_child(confirm)
+
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	GameUIStyle.style_button(cancel)
+	cancel.pressed.connect(_on_combat_cancelled)
+	footer.add_child(cancel)
+
+	forecast_overlay.hide()
+
+
+func _build_forecast_side(parent: HBoxContainer) -> Dictionary:
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.size_flags_stretch_ratio = 1.0
+	var card_style := StyleBoxFlat.new()
+	card_style.bg_color = GameUIStyle.PANEL
+	card_style.set_corner_radius_all(6)
+	card_style.set_content_margin_all(12)
+	card.add_theme_stylebox_override("panel", card_style)
+	parent.add_child(card)
+
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 9)
+	card.add_child(content)
+
+	var banner := PanelContainer.new()
+	var banner_style := StyleBoxFlat.new()
+	banner_style.bg_color = GameUIStyle.PANEL_LIGHT
+	banner_style.set_corner_radius_all(4)
+	banner_style.set_content_margin_all(9)
+	banner.add_theme_stylebox_override("panel", banner_style)
+	content.add_child(banner)
+	var name := Label.new()
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(name, 15)
+	banner.add_child(name)
+
+	var weapon := Label.new()
+	weapon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(weapon, 12, true)
+	content.add_child(weapon)
+
+	var triangle := Label.new()
+	triangle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(triangle, 11, true)
+	content.add_child(triangle)
+
+	var separator := HSeparator.new()
+	separator.add_theme_color_override("separator", GameUIStyle.BORDER)
+	content.add_child(separator)
+
+	var stats := VBoxContainer.new()
+	stats.add_theme_constant_override("separation", 8)
+	content.add_child(stats)
+
+	var fields := {
+		"name": name,
+		"weapon": weapon,
+		"triangle": triangle,
+		"banner_style": banner_style
+	}
+	for stat_name in ["HP", "Damage", "Hit", "Crit", "Atk Speed"]:
+		fields[stat_name] = _add_forecast_stat(stats, stat_name)
+	return fields
+
+
+func _add_forecast_stat(parent: VBoxContainer, stat_name: String) -> Label:
+	var row := HBoxContainer.new()
+	parent.add_child(row)
+	var caption := Label.new()
+	caption.text = stat_name
+	caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	GameUIStyle.style_label(caption, 13, true)
+	row.add_child(caption)
+	var value := Label.new()
+	value.custom_minimum_size.x = 48
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	GameUIStyle.style_label(value, 14)
+	row.add_child(value)
+	return value
+
+
+func _update_forecast_side(fields: Dictionary, unit: Unit, opponent: Unit) -> void:
+	fields["name"].text = unit.unit_data.character_name
+	fields["weapon"].text = (
+		unit.equipped_weapon.weapon_name if unit.equipped_weapon != null else "Unarmed"
+	)
+	fields["banner_style"].bg_color = (
+		Color("#a3454c") if unit.team == Unit.Team.ENEMY
+		else GameUIStyle.PANEL_LIGHT
+	)
+	fields["triangle"].text = get_triangle_label(unit, opponent).strip_edges()
+	fields["HP"].text = str(unit.current_hp)
+
+	if not CombatCalculator.can_attack(unit, opponent):
+		for stat_name in ["Damage", "Hit", "Crit", "Atk Speed"]:
+			fields[stat_name].text = "—"
+		return
+
+	var strikes: int = 2 if CombatCalculator.can_follow_up(unit, opponent) else 1
+	fields["Damage"].text = (
+		str(CombatCalculator.calculate_damage(unit, opponent)) + " x" + str(strikes)
+	)
+	fields["Hit"].text = str(CombatCalculator.get_displayed_hit(unit, opponent)) + "%"
+	fields["Crit"].text = str(CombatCalculator.get_displayed_critical(unit, opponent)) + "%"
+	fields["Atk Speed"].text = str(CombatCalculator.get_attack_speed(unit))
 
 
 func get_all_units() -> Array[Unit]:
@@ -375,16 +548,26 @@ func _on_attack_selected() -> void:
 	interaction_state = InteractionState.CHOOSING_WEAPON
 	action_menu.close_menu()
 
-	weapon_menu.clear()
+	for child in weapon_menu_buttons.get_children():
+		weapon_menu_buttons.remove_child(child)
+		child.queue_free()
+
 	for index in range(weapon_choices.size()):
 		var weapon: WeaponResource = weapon_choices[index]
-		weapon_menu.add_item(weapon.weapon_name, index)
+		var button := Button.new()
+		button.text = weapon.weapon_name
+		button.custom_minimum_size = Vector2(180, 38)
+		GameUIStyle.style_button(button)
+		button.pressed.connect(_on_weapon_chosen.bind(index))
+		weapon_menu_buttons.add_child(button)
 
-	weapon_menu.position = Vector2i(
+	var popup_position := Vector2i(
 		selected_unit.global_position + Vector2(40, 0)
 	)
-	weapon_menu.popup()
-
+	var popup_height: int = 32 + weapon_choices.size() * 38 + maxi(0, weapon_choices.size() - 1) * 10
+	weapon_menu.popup(Rect2i(popup_position, Vector2i(220, popup_height)))
+	if weapon_menu_buttons.get_child_count() > 0:
+		(weapon_menu_buttons.get_child(0) as Button).grab_focus()
 
 func _on_weapon_chosen(index: int) -> void:
 	if interaction_state != InteractionState.CHOOSING_WEAPON:
@@ -393,6 +576,7 @@ func _on_weapon_chosen(index: int) -> void:
 		return
 
 	selected_unit.equipped_weapon = weapon_choices[index]
+	weapon_menu.hide()
 	available_targets = get_attack_targets(selected_unit)
 	if available_targets.is_empty():
 		_restore_previous_weapon()
@@ -491,34 +675,9 @@ func show_combat_forecast() -> void:
 		return
 
 	interaction_state = InteractionState.COMBAT_FORECAST
-
-	var attacker: Unit = selected_unit
-	var defender: Unit = pending_target
-
-	var attacker_name: String = attacker.unit_data.character_name
-	var defender_name: String = defender.unit_data.character_name
-
-	var attacker_weapon: String = attacker.equipped_weapon.weapon_name
-	var defender_weapon: String = "None"
-
-	if defender.equipped_weapon != null:
-		defender_weapon = defender.equipped_weapon.weapon_name
-
-	var forecast: String = (
-		attacker_name + " (" + attacker_weapon + ")"
-		+ get_triangle_label(attacker, defender)
-		+ "\nHP: " + str(attacker.current_hp)
-		+ "\n" + get_forecast_line(attacker, defender)
-		+ "\n\n"
-		+ defender_name + " (" + defender_weapon + ")"
-		+ get_triangle_label(defender, attacker)
-		+ "\nHP: " + str(defender.current_hp)
-		+ "\n" + get_forecast_line(defender, attacker)
-		+ "\n\nConfirm attack?"
-	)
-
-	combat_dialog.dialog_text = forecast
-	combat_dialog.popup_centered()
+	_update_forecast_side(forecast_attacker_fields, selected_unit, pending_target)
+	_update_forecast_side(forecast_defender_fields, pending_target, selected_unit)
+	forecast_overlay.show()
 
 
 func _on_combat_confirmed() -> void:
@@ -537,6 +696,7 @@ func _on_combat_confirmed() -> void:
 		return
 
 	interaction_state = InteractionState.COMBAT_RESOLVING
+	forecast_overlay.hide()
 
 	grid.selected_cell = Vector2i(-1, -1)
 	grid.highlighted_cells.clear()
@@ -559,6 +719,7 @@ func _on_combat_cancelled() -> void:
 	if interaction_state != InteractionState.COMBAT_FORECAST:
 		return
 
+	forecast_overlay.hide()
 	pending_target = null
 	interaction_state = InteractionState.TARGETING
 
