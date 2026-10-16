@@ -11,6 +11,9 @@ extends Resource
 @export_group("Character Stats")
 @export var stats: UnitStatsResource
 
+@export_group("Growth Rates")
+@export var growth_rates: UnitGrowthResource
+
 @export_group("Equipment")
 @export var equipped_weapon: WeaponResource
 
