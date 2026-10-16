@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://d2w4ssjdg7l2h" path="res://scripts/resources/unit_promotion_bonuses_resource.gd" id="1_aix1n"]
 [ext_resource type="Script" uid="uid://brgpx6u5ytqsu" path="res://scripts/resources/unit_class_resource.gd" id="1_h15ag"]
 [ext_resource type="Script" uid="uid://b5f0r3i3vd574" path="res://scripts/unit_stat_caps_resource.gd" id="2_fqvhh"]
+[ext_resource type="Script" uid="uid://bun2rywisw4v6" path="res://scripts/resources/weapon_promotion_bonus_resource.gd" id="4_ww6ms"]
 
 [sub_resource type="Resource" id="Resource_aix1n"]
 script = ExtResource("1_aix1n")
@@ -21,9 +22,15 @@ speed = 24
 defense = 30
 resistance = 25
 
+[sub_resource type="Resource" id="Resource_3w3tb"]
+script = ExtResource("4_ww6ms")
+light_exp = 30
+axe_minimum = 1
+
 [resource]
 script = ExtResource("1_h15ag")
 stat_caps = SubResource("Resource_h15ag")
+weapon_promotion_bonuses = SubResource("Resource_3w3tb")
 promotion_bonuses = SubResource("Resource_aix1n")
 class_name_display = "General"
 max_hp = 60

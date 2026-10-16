@@ -4,6 +4,7 @@ extends Resource
 
 @export var stat_caps: UnitStatCapsResource
 
+@export var weapon_promotion_bonuses: WeaponPromotionBonusResource
 @export var promoted_class: UnitClassResource
 @export var promotion_bonuses: UnitPromotionBonusesResource
 
