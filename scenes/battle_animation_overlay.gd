@@ -1,4 +1,3 @@
-
 class_name BattleAnimationOverlay
 extends Control
 
@@ -33,10 +32,17 @@ const ENEMY_COLOR := Color("#c74b50")
 
 const SPRITE_SIZE := Vector2(72, 96)
 const ATTACK_DISTANCE: float = 48.0
+const WEAPON_EXPERIENCE_PER_STRIKE: int = 1
 
 var player_unit: Unit = null
 var enemy_unit: Unit = null
 var is_playing: bool = false
+var pending_rank_ups: Array[Dictionary] = []
+var rank_notice: PanelContainer
+var rank_name: Label
+var rank_weapon: Label
+var rank_before: Label
+var rank_after: Label
 
 
 func _ready() -> void:
@@ -54,6 +60,7 @@ func _ready() -> void:
 	combat_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	combat_text.add_theme_font_size_override("font_size", 24)
 
+	_build_rank_notification()
 	hide()
 
 
@@ -112,12 +119,6 @@ func layout_battle_screen() -> void:
 
 
 func setup_battle(attacker: Unit, defender: Unit) -> void:
-	print("PlayerInfo: ", get_node_or_null("PlayerInfo"))
-	print("HPLabel direct lookup: ", get_node_or_null("PlayerInfo/HPLabel"))
-	print("Cached player_hp_label: ", player_hp_label)
-	print("Actual PlayerInfo children:")
-	for child in get_node("PlayerInfo").get_children():
-		print("  [", child.name, "]")
 	if attacker.team == Unit.Team.PLAYER:
 		player_unit = attacker
 		enemy_unit = defender
@@ -131,7 +132,6 @@ func setup_battle(attacker: Unit, defender: Unit) -> void:
 	player_weapon.text = get_weapon_name(player_unit)
 	enemy_weapon.text = get_weapon_name(enemy_unit)
 
-	# Maximum HP comes from the unit's class resource.
 	player_hp_bar.max_value = (
 		player_unit.unit_data.unit_class.max_hp
 	)
@@ -182,6 +182,7 @@ func play_battle(attacker: Unit, defender: Unit) -> void:
 		return
 
 	is_playing = true
+	pending_rank_ups.clear()
 	setup_battle(attacker, defender)
 
 	await get_tree().create_timer(0.45).timeout
@@ -208,10 +209,155 @@ func play_battle(attacker: Unit, defender: Unit) -> void:
 			await play_strike(defender, attacker)
 
 	await get_tree().create_timer(0.7).timeout
+	await _show_pending_rank_ups()
 
 	hide()
 	is_playing = false
 	battle_animation_finished.emit()
+
+
+func award_weapon_experience(attacker: Unit) -> void:
+	if attacker == null or attacker.unit_data == null:
+		return
+
+	var weapon: WeaponResource = attacker.equipped_weapon
+	var proficiencies: WeaponProficiencyResource = (
+		attacker.unit_data.weapon_proficiencies
+	)
+
+	if weapon == null or proficiencies == null:
+		return
+
+	var weapon_type: WeaponResource.WeaponType = weapon.weapon_type
+	var previous_exp: int = proficiencies.get_experience(weapon_type)
+
+	# A proficiency of zero means this unit cannot use the weapon type.
+	# Don't grant proficiency for an otherwise invalid loadout.
+	if previous_exp <= 0:
+		return
+
+	var previous_rank: String = WeaponProficiencyCalculator.get_rank(
+		previous_exp
+	)
+
+	proficiencies.add_experience(
+		weapon_type,
+		WEAPON_EXPERIENCE_PER_STRIKE
+	)
+
+	var current_exp: int = proficiencies.get_experience(weapon_type)
+	var current_rank: String = WeaponProficiencyCalculator.get_rank(
+		current_exp
+	)
+
+	print(
+		"WEXP: ", attacker.unit_data.character_name,
+		" | ", weapon.weapon_name,
+		" | ", previous_exp, " -> ", current_exp,
+		" | Rank ", current_rank
+	)
+
+	if current_rank != previous_rank:
+		pending_rank_ups.append({
+			"name": attacker.unit_data.character_name,
+			"weapon": _weapon_type_name(weapon_type),
+			"before": previous_rank,
+			"after": current_rank
+		})
+		print(
+			"WEAPON RANK UP: ", attacker.unit_data.character_name,
+			" | ", previous_rank, " -> ", current_rank,
+			" | ", weapon.weapon_name
+		)
+
+
+func _weapon_type_name(weapon_type: WeaponResource.WeaponType) -> String:
+	match weapon_type:
+		WeaponResource.WeaponType.SWORD: return "Sword"
+		WeaponResource.WeaponType.LANCE: return "Lance"
+		WeaponResource.WeaponType.AXE: return "Axe"
+		WeaponResource.WeaponType.BOW: return "Bow"
+		WeaponResource.WeaponType.ANIMA: return "Anima"
+		WeaponResource.WeaponType.LIGHT: return "Light"
+		WeaponResource.WeaponType.DARK: return "Dark"
+		WeaponResource.WeaponType.STAFF: return "Staff"
+	return "Weapon"
+
+
+func _build_rank_notification() -> void:
+	# A centered, self-contained panel built in code; no scene edits required.
+	rank_notice = PanelContainer.new()
+	rank_notice.name = "WeaponRankNotice"
+	rank_notice.custom_minimum_size = Vector2(320, 0)
+	rank_notice.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	rank_notice.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	rank_notice.grow_vertical = Control.GROW_DIRECTION_BOTH
+	rank_notice.mouse_filter = Control.MOUSE_FILTER_STOP
+	rank_notice.add_theme_stylebox_override("panel", GameUIStyle.make_panel_style())
+	add_child(rank_notice)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	rank_notice.add_child(column)
+
+	var heading := Label.new()
+	heading.text = "WEAPON RANK INCREASED!"
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(heading, 13, true)
+	column.add_child(heading)
+
+	rank_name = Label.new()
+	rank_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(rank_name, 22)
+	column.add_child(rank_name)
+
+	var separator := HSeparator.new()
+	column.add_child(separator)
+
+	rank_weapon = Label.new()
+	rank_weapon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(rank_weapon, 14, true)
+	column.add_child(rank_weapon)
+
+	var ranks := HBoxContainer.new()
+	ranks.alignment = BoxContainer.ALIGNMENT_CENTER
+	ranks.add_theme_constant_override("separation", 20)
+	column.add_child(ranks)
+
+	rank_before = Label.new()
+	rank_before.custom_minimum_size.x = 55
+	rank_before.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(rank_before, 28)
+	ranks.add_child(rank_before)
+
+	var arrow := Label.new()
+	arrow.text = "→"
+	GameUIStyle.style_label(arrow, 22, true)
+	ranks.add_child(arrow)
+
+	rank_after = Label.new()
+	rank_after.custom_minimum_size.x = 55
+	rank_after.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(rank_after, 28)
+	rank_after.add_theme_color_override("font_color", GameUIStyle.HEALTH)
+	ranks.add_child(rank_after)
+
+	rank_notice.hide()
+
+
+func _show_pending_rank_ups() -> void:
+	for rank_up in pending_rank_ups:
+		rank_name.text = rank_up["name"]
+		rank_weapon.text = rank_up["weapon"]
+		rank_before.text = rank_up["before"]
+		rank_after.text = rank_up["after"]
+		rank_notice.show()
+		await get_tree().process_frame
+		# Recenter after text and container minimum sizes are resolved.
+		rank_notice.position = (size - rank_notice.size) / 2.0
+		await get_tree().create_timer(2.0).timeout
+		rank_notice.hide()
+	pending_rank_ups.clear()
 
 
 func play_strike(attacker: Unit, defender: Unit) -> void:
@@ -251,7 +397,12 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 	)
 
 	if not result["valid"]:
+		# Restore the sprite if the strike becomes invalid mid-animation.
+		attacking_sprite.position = starting_position
 		return
+
+	# Award once for each valid strike, regardless of hit or miss.
+	award_weapon_experience(attacker)
 
 	var attacker_name: String = attacker.unit_data.character_name
 	var defender_name: String = defender.unit_data.character_name
@@ -293,7 +444,7 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 			attacker_name,
 			" attacks ",
 			defender_name,
-            " - MISS!"
+			" - MISS!"
 		)
 
 	var return_tween := create_tween()
