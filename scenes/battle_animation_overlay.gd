@@ -50,6 +50,9 @@ var exp_name: Label
 var exp_gain: Label
 var exp_bar: ProgressBar
 var exp_total: Label
+var level_notice: PanelContainer
+var level_title: Label
+var level_stats_column: VBoxContainer
 
 
 func _ready() -> void:
@@ -69,6 +72,7 @@ func _ready() -> void:
 
 	_build_rank_notification()
 	_build_exp_notification()
+	_build_level_notification()
 	hide()
 
 
@@ -428,28 +432,156 @@ func _award_and_show_player_exp() -> void:
 		true,
 		player_defeated_enemy
 	)
-	var before: int = clampi(data.experience, 0, 99)
-	var after: int = mini(99, before + gained)
-	var actual_gain: int = after - before
-	data.experience = after
+	var progression: Dictionary = LevelProgression.add_experience(data, gained)
+	var actual_gain: int = int(progression["experience_gained"])
+	var before_exp: int = int(progression["previous_experience"])
+	var levels_gained: int = int(progression["levels_gained"])
+	var after_exp: int = int(progression["new_experience"])
 
 	print("EXP: ", data.character_name, " | +", actual_gain,
-		" | ", before, " -> ", after)
+		" | Lv ", progression["previous_level"], " -> ", data.level,
+		" | EXP ", before_exp, " -> ", after_exp)
 
 	exp_name.text = data.character_name
 	exp_gain.text = "+" + str(actual_gain) + " EXP"
-	exp_total.text = str(before) + " / 100 EXP"
-	exp_bar.value = before
+	exp_bar.value = before_exp
+	exp_total.text = str(before_exp) + " / 100 EXP"
 	exp_notice.show()
 	await get_tree().process_frame
 	exp_notice.position = (size - exp_notice.size) / 2.0
 
-	var tween := create_tween()
-	tween.tween_property(exp_bar, "value", float(after), 0.7)
-	await tween.finished
-	exp_total.text = str(after) + " / 100 EXP"
-	await get_tree().create_timer(1.0).timeout
+	var remaining: int = actual_gain
+	var position: int = before_exp
+	var level_index: int = 0
+	while remaining > 0:
+		var step: int = mini(remaining, 100 - position)
+		var destination: int = position + step
+		var tween := create_tween()
+		tween.tween_property(exp_bar, "value", float(destination), 0.55 * float(step) / 100.0 + 0.15)
+		await tween.finished
+		exp_total.text = str(destination) + " / 100 EXP"
+		remaining -= step
+		position = destination
+
+		if position >= 100:
+			# Hold the full EXP bar before displaying the level-up.
+			await get_tree().create_timer(0.4).timeout
+			if level_index < levels_gained:
+				var old_stats: Dictionary = _snapshot_stats(data.stats)
+				var increases: Dictionary = StatGrowthCalculator.roll_and_apply(data)
+				var hp_increase: int = int(increases.get("max_hp", 0))
+				if hp_increase > 0:
+					player_unit.current_hp += hp_increase
+					player_hp_bar.max_value = player_unit.stats.max_hp
+					player_hp_bar.value = player_unit.current_hp
+					update_hp_labels()
+				var new_level: int = int(progression["previous_level"]) + level_index + 1
+				await _show_level_up(data.character_name, new_level, old_stats, increases)
+				level_index += 1
+
+			# Only reveal the remaining EXP after the level-up panel closes.
+			position = 0
+			exp_bar.value = 0
+			exp_total.text = "0 / 100 EXP"
+			if remaining > 0:
+				await get_tree().create_timer(0.3).timeout
+
+	# Preserve the actual EXP calculated by LevelProgression.
+	exp_bar.value = after_exp
+	exp_total.text = str(after_exp) + " / 100 EXP"
+	await get_tree().create_timer(1.5 if levels_gained > 0 else 0.65).timeout
 	exp_notice.hide()
+
+func _snapshot_stats(stats: UnitStatsResource) -> Dictionary:
+	var values: Dictionary = {}
+	if stats == null:
+		return values
+	for stat_name in StatGrowthCalculator.STAT_NAMES:
+		values[stat_name] = int(stats.get(stat_name))
+	return values
+
+
+func _build_level_notification() -> void:
+	level_notice = PanelContainer.new()
+	level_notice.name = "LevelUpNotice"
+	level_notice.custom_minimum_size = Vector2(350, 0)
+	level_notice.mouse_filter = Control.MOUSE_FILTER_STOP
+	level_notice.add_theme_stylebox_override("panel", GameUIStyle.make_panel_style())
+	add_child(level_notice)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	level_notice.add_child(column)
+
+	var heading := Label.new()
+	heading.text = "LEVEL UP!"
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(heading, 18)
+	column.add_child(heading)
+
+	level_title = Label.new()
+	level_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	GameUIStyle.style_label(level_title, 17)
+	column.add_child(level_title)
+
+	column.add_child(HSeparator.new())
+	level_stats_column = VBoxContainer.new()
+	level_stats_column.add_theme_constant_override("separation", 6)
+	column.add_child(level_stats_column)
+	level_notice.hide()
+
+
+func _show_level_up(character_name: String, new_level: int,
+		old_stats: Dictionary, increases: Dictionary) -> void:
+	for child in level_stats_column.get_children():
+		level_stats_column.remove_child(child)
+		child.queue_free()
+
+	level_title.text = character_name + "  Lv " + str(new_level)
+	var stat_labels: Dictionary = {
+		"max_hp": "HP", "strength": "STR", "skill": "SKL",
+		"speed": "SPD", "luck": "LCK", "defense": "DEF",
+		"resistance": "RES"
+	}
+	var reveal_rows: Array[HBoxContainer] = []
+	for stat_name in StatGrowthCalculator.STAT_NAMES:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		level_stats_column.add_child(row)
+		var label := Label.new()
+		label.text = str(stat_labels[stat_name])
+		label.custom_minimum_size.x = 65
+		GameUIStyle.style_label(label, 14, true)
+		row.add_child(label)
+		var old_value: int = int(old_stats.get(stat_name, 0))
+		var amount: int = int(increases.get(stat_name, 0))
+		var value := Label.new()
+		value.text = str(old_value + amount)
+		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		GameUIStyle.style_label(value, 14)
+		row.add_child(value)
+		var gain := Label.new()
+		gain.text = "+" + str(amount) if amount > 0 else "—"
+		gain.custom_minimum_size.x = 38
+		gain.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		GameUIStyle.style_label(gain, 14, amount == 0)
+		if amount > 0:
+			gain.add_theme_color_override("font_color", GameUIStyle.HEALTH)
+		row.add_child(gain)
+		row.hide()
+		reveal_rows.append(row)
+
+	exp_notice.hide()
+	level_notice.show()
+	await get_tree().process_frame
+	level_notice.position = (size - level_notice.size) / 2.0
+	for row in reveal_rows:
+		row.show()
+		await get_tree().create_timer(0.16).timeout
+	await get_tree().create_timer(2.5).timeout
+	level_notice.hide()
+	exp_notice.show()
 
 
 func play_strike(attacker: Unit, defender: Unit) -> void:
