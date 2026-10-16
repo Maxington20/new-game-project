@@ -10,8 +10,12 @@
 
 [sub_resource type="Resource" id="Resource_htrwf"]
 script = ExtResource("2_451wi")
-max_hp = 100
-strength = 100
+max_hp = 80
+strength = 45
+skill = 60
+speed = 65
+luck = 40
+defense = 25
 metadata/_custom_type_script = "uid://d4fxcftm7ngnx"
 
 [sub_resource type="Resource" id="Resource_0koqq"]
