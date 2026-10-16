@@ -57,3 +57,47 @@ static func contains_weapon(
 		return false
 
 	return unit_data.inventory.has(weapon)
+
+
+static func get_required_experience(
+	rank: WeaponResource.WeaponRank
+) -> int:
+	match rank:
+		WeaponResource.WeaponRank.E:
+			return WeaponProficiencyCalculator.RANK_E
+		WeaponResource.WeaponRank.D:
+			return WeaponProficiencyCalculator.RANK_D
+		WeaponResource.WeaponRank.C:
+			return WeaponProficiencyCalculator.RANK_C
+		WeaponResource.WeaponRank.B:
+			return WeaponProficiencyCalculator.RANK_B
+		WeaponResource.WeaponRank.A:
+			return WeaponProficiencyCalculator.RANK_A
+		WeaponResource.WeaponRank.S:
+			return WeaponProficiencyCalculator.RANK_S
+
+	return WeaponProficiencyCalculator.RANK_E
+
+
+static func can_equip(
+	unit_data: UnitResource,
+	weapon: WeaponResource
+) -> bool:
+	if unit_data == null or weapon == null:
+		return false
+
+	if unit_data.weapon_proficiencies == null:
+		return false
+
+	if not contains_weapon(unit_data, weapon):
+		return false
+
+	var required_exp: int = get_required_experience(
+		weapon.required_rank
+	)
+
+	return WeaponProficiencyCalculator.can_use_weapon(
+		unit_data.weapon_proficiencies,
+		weapon.weapon_type,
+		required_exp
+	)
