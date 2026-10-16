@@ -5,8 +5,6 @@ const STAT_NAMES: Array[String] = [
 	"max_hp", "strength", "skill", "speed", "luck", "defense", "resistance"
 ]
 
-# FE7 unpromoted-class caps. Promoted class-specific caps will be
-# supplied by the class system when promotion is implemented.
 const UNPROMOTED_CAPS: Dictionary = {
 	"max_hp": 60,
 	"strength": 20,
@@ -17,8 +15,7 @@ const UNPROMOTED_CAPS: Dictionary = {
 	"resistance": 20
 }
 
-# Rolls each growth independently and applies the result, respecting stat caps.
-# Returns actual increases (not successful rolls blocked by a cap).
+# Returns actual increases, not rolls blocked by a cap.
 # Does not change level, EXP, or current battle HP.
 static func roll_and_apply(unit_data: UnitResource) -> Dictionary:
 	var increases: Dictionary = {}
@@ -33,9 +30,15 @@ static func roll_and_apply(unit_data: UnitResource) -> Dictionary:
 			return increases
 		unit_data.stats = UnitStatsResource.from_class(unit_data.unit_class)
 
+	var class_caps: UnitStatCapsResource = null
+	if unit_data.unit_class != null:
+		class_caps = unit_data.unit_class.stat_caps
+
 	for stat_name in STAT_NAMES:
 		var current_value: int = int(unit_data.stats.get(stat_name))
 		var cap: int = int(UNPROMOTED_CAPS[stat_name])
+		if class_caps != null:
+			cap = int(class_caps.get(stat_name))
 		if current_value >= cap:
 			continue
 

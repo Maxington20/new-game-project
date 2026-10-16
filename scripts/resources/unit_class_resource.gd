@@ -2,6 +2,7 @@
 class_name UnitClassResource
 extends Resource
 
+@export var stat_caps: UnitStatCapsResource
 @export var class_name_display: String = ""
 
 @export var max_hp: int = 20
