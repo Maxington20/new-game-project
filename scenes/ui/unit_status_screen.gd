@@ -5,18 +5,33 @@ extends Control
 signal closed
 
 const PANEL_WIDTH: float = 520.0
-const PANEL_HEIGHT: float = 560.0
+const PANEL_HEIGHT: float = 620.0
+
+const PLAYER_PORTRAIT_COLOR := Color("#42658b")
+const ENEMY_PORTRAIT_COLOR := Color("#a3454c")
 
 const PAGE_STATS: int = 0
 const PAGE_EQUIPMENT: int = 1
 const PAGE_PROFICIENCIES: int = 2
 const PAGE_COUNT: int = 3
 
+const WEAPON_TYPES: Array[WeaponResource.WeaponType] = [
+	WeaponResource.WeaponType.SWORD,
+	WeaponResource.WeaponType.LANCE,
+	WeaponResource.WeaponType.AXE,
+	WeaponResource.WeaponType.BOW,
+	WeaponResource.WeaponType.ANIMA,
+	WeaponResource.WeaponType.LIGHT,
+	WeaponResource.WeaponType.DARK,
+	WeaponResource.WeaponType.STAFF
+]
+
 var inspected_unit: Unit = null
 var current_page: int = PAGE_STATS
 
 var background: ColorRect
 var main_panel: PanelContainer
+var portrait_style: StyleBoxFlat
 
 var page_label: Label
 var portrait_letter: Label
@@ -39,7 +54,6 @@ func _ready() -> void:
 
 
 func build_interface() -> void:
-	# Full-screen dimming background.
 	background = ColorRect.new()
 	background.color = Color(0, 0, 0, 0.65)
 	background.set_anchors_and_offsets_preset(
@@ -48,7 +62,6 @@ func build_interface() -> void:
 	background.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(background)
 
-	# Center a fixed-size window.
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(
 		Control.PRESET_FULL_RECT
@@ -77,12 +90,8 @@ func build_interface() -> void:
 	)
 	panel_frame.add_child(main_panel)
 
-	# Main vertical layout.
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override(
-		"separation",
-		14
-	)
+	content.add_theme_constant_override("separation", 14)
 	main_panel.add_child(content)
 
 	# Header
@@ -101,17 +110,14 @@ func build_interface() -> void:
 
 	# Character summary
 	var summary := HBoxContainer.new()
-	summary.add_theme_constant_override(
-		"separation",
-		16
-	)
+	summary.add_theme_constant_override("separation", 16)
 	content.add_child(summary)
 
 	var portrait := PanelContainer.new()
 	portrait.custom_minimum_size = Vector2(88, 94)
 
-	var portrait_style := StyleBoxFlat.new()
-	portrait_style.bg_color = GameUIStyle.PANEL_LIGHT
+	portrait_style = StyleBoxFlat.new()
+	portrait_style.bg_color = PLAYER_PORTRAIT_COLOR
 	portrait_style.set_corner_radius_all(6)
 
 	portrait.add_theme_stylebox_override(
@@ -121,26 +127,15 @@ func build_interface() -> void:
 	summary.add_child(portrait)
 
 	portrait_letter = Label.new()
-	portrait_letter.horizontal_alignment = (
-		HORIZONTAL_ALIGNMENT_CENTER
-	)
-	portrait_letter.vertical_alignment = (
-		VERTICAL_ALIGNMENT_CENTER
-	)
-	portrait_letter.size_flags_horizontal = (
-		Control.SIZE_EXPAND_FILL
-	)
-	portrait_letter.size_flags_vertical = (
-		Control.SIZE_EXPAND_FILL
-	)
+	portrait_letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	portrait_letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	portrait_letter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	portrait_letter.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	GameUIStyle.style_label(portrait_letter, 36)
 	portrait.add_child(portrait_letter)
 
 	var details := VBoxContainer.new()
-	details.add_theme_constant_override(
-		"separation",
-		5
-	)
+	details.add_theme_constant_override("separation", 5)
 	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary.add_child(details)
 
@@ -168,37 +163,24 @@ func build_interface() -> void:
 	hp_background.bg_color = GameUIStyle.BACKGROUND
 	hp_background.set_corner_radius_all(4)
 
-	hp_bar.add_theme_stylebox_override(
-		"fill",
-		hp_fill
-	)
-	hp_bar.add_theme_stylebox_override(
-		"background",
-		hp_background
-	)
+	hp_bar.add_theme_stylebox_override("fill", hp_fill)
+	hp_bar.add_theme_stylebox_override("background", hp_background)
 	details.add_child(hp_bar)
 
 	add_separator(content)
 
-	# Fixed-height content area.
-	# No ScrollContainer and no scrollbars.
+	# Fixed content area, no scrolling.
 	page_content = VBoxContainer.new()
-	page_content.custom_minimum_size.y = 285
+	page_content.custom_minimum_size.y = 345
 	page_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	page_content.add_theme_constant_override(
-		"separation",
-		12
-	)
+	page_content.add_theme_constant_override("separation", 8)
 	content.add_child(page_content)
 
 	add_separator(content)
 
-	# Navigation stays at the bottom.
+	# Navigation footer
 	var navigation := HBoxContainer.new()
-	navigation.add_theme_constant_override(
-		"separation",
-		8
-	)
+	navigation.add_theme_constant_override("separation", 8)
 	content.add_child(navigation)
 
 	previous_button = Button.new()
@@ -241,11 +223,7 @@ func add_text(
 ) -> Label:
 	var label := Label.new()
 	label.text = value
-	GameUIStyle.style_label(
-		label,
-		font_size,
-		muted
-	)
+	GameUIStyle.style_label(label, font_size, muted)
 	parent.add_child(label)
 	return label
 
@@ -255,19 +233,10 @@ func add_stat(
 	stat_name: String,
 	stat_value: String
 ) -> void:
-	var label := add_text(
-		stat_grid,
-		stat_name,
-		13,
-		true
-	)
+	var label := add_text(stat_grid, stat_name, 13, true)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	var value := add_text(
-		stat_grid,
-		stat_value,
-		14
-	)
+	var value := add_text(stat_grid, stat_value, 14)
 	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
@@ -275,14 +244,8 @@ func add_stat(
 func create_stat_grid(parent: Node) -> GridContainer:
 	var stat_grid := GridContainer.new()
 	stat_grid.columns = 4
-	stat_grid.add_theme_constant_override(
-		"h_separation",
-		24
-	)
-	stat_grid.add_theme_constant_override(
-		"v_separation",
-		12
-	)
+	stat_grid.add_theme_constant_override("h_separation", 24)
+	stat_grid.add_theme_constant_override("v_separation", 12)
 	parent.add_child(stat_grid)
 	return stat_grid
 
@@ -306,6 +269,12 @@ func show_unit(unit: Unit) -> void:
 	var data: UnitResource = unit.unit_data
 	var unit_class: UnitClassResource = data.unit_class
 
+	# Change portrait colour based on team.
+	if unit.team == Unit.Team.ENEMY:
+		portrait_style.bg_color = ENEMY_PORTRAIT_COLOR
+	else:
+		portrait_style.bg_color = PLAYER_PORTRAIT_COLOR
+
 	portrait_letter.text = unit.get_class_letter()
 	name_label.text = data.character_name
 
@@ -324,7 +293,6 @@ func show_unit(unit: Unit) -> void:
 	hp_bar.value = unit.current_hp
 
 	refresh_page()
-
 	show()
 	move_to_front()
 
@@ -341,17 +309,13 @@ func refresh_page() -> void:
 	)
 
 	previous_button.disabled = current_page == 0
-	next_button.disabled = (
-		current_page == PAGE_COUNT - 1
-	)
+	next_button.disabled = current_page == PAGE_COUNT - 1
 
 	match current_page:
 		PAGE_STATS:
 			build_stats_page()
-
 		PAGE_EQUIPMENT:
 			build_equipment_page()
-
 		PAGE_PROFICIENCIES:
 			build_proficiencies_page()
 
@@ -374,77 +338,45 @@ func build_stats_page() -> void:
 
 	add_separator(page_content)
 
-	var weapon: WeaponResource = (
-		inspected_unit.equipped_weapon
-	)
+	var weapon: WeaponResource = inspected_unit.equipped_weapon
 
 	if weapon == null:
 		add_text(page_content, "Equipped: None")
 		return
 
-	var attack: int = (
-		unit_class.strength + weapon.might
-	)
-
+	var attack: int = unit_class.strength + weapon.might
 	var attack_speed: int = (
-		CombatCalculator.get_attack_speed(
-			inspected_unit
-		)
+		CombatCalculator.get_attack_speed(inspected_unit)
 	)
 
+	add_text(page_content, "Equipped: " + weapon.weapon_name)
 	add_text(
 		page_content,
-		"Equipped: " + weapon.weapon_name
-	)
-
-	add_text(
-		page_content,
-		"ATK " + str(attack)
-		+ "  ·  AS " + str(attack_speed),
+		"ATK " + str(attack) + "  ·  AS " + str(attack_speed),
 		13,
 		true
 	)
 
 
 func build_equipment_page() -> void:
-	var weapon: WeaponResource = (
-		inspected_unit.equipped_weapon
-	)
+	var weapon: WeaponResource = inspected_unit.equipped_weapon
 
-	add_text(
-		page_content,
-		"EQUIPPED WEAPON",
-		15
-	)
+	add_text(page_content, "EQUIPPED WEAPON", 15)
 
 	if weapon == null:
-		add_text(
-			page_content,
-			"No weapon equipped.",
-			14,
-			true
-		)
+		add_text(page_content, "No weapon equipped.", 14, true)
 		return
 
 	var weapon_type: String = get_weapon_type_name(
 		weapon.weapon_type
 	)
 
-	var range_text: String = str(
-		weapon.min_range
-	)
+	var range_text: String = str(weapon.min_range)
 
 	if weapon.min_range != weapon.max_range:
-		range_text += "-" + str(
-			weapon.max_range
-		)
+		range_text += "-" + str(weapon.max_range)
 
-	add_text(
-		page_content,
-		weapon.weapon_name,
-		20
-	)
-
+	add_text(page_content, weapon.weapon_name, 20)
 	add_text(
 		page_content,
 		weapon_type + " · Range " + range_text,
@@ -465,14 +397,9 @@ func build_equipment_page() -> void:
 		inspected_unit.unit_data.unit_class
 	)
 
-	var attack: int = (
-		unit_class.strength + weapon.might
-	)
-
+	var attack: int = unit_class.strength + weapon.might
 	var attack_speed: int = (
-		CombatCalculator.get_attack_speed(
-			inspected_unit
-		)
+		CombatCalculator.get_attack_speed(inspected_unit)
 	)
 
 	add_stat(stat_grid, "Attack", str(attack))
@@ -482,42 +409,137 @@ func build_equipment_page() -> void:
 
 	add_text(
 		page_content,
-		get_weapon_triangle_description(
-			weapon.weapon_type
-		),
+		get_weapon_triangle_description(weapon.weapon_type),
 		12,
 		true
 	)
 
 
 func build_proficiencies_page() -> void:
-	add_text(
-		page_content,
-		"WEAPON PROFICIENCIES",
-		15
+	add_text(page_content, "WEAPON PROFICIENCIES", 15)
+
+	var proficiencies: WeaponProficiencyResource = (
+		inspected_unit.unit_data.weapon_proficiencies
 	)
 
-	add_text(
-		page_content,
-		"Weapon ranks are not implemented yet.",
-		13,
-		true
-	)
+	if proficiencies == null:
+		add_text(
+			page_content,
+			"No weapon proficiency data assigned.",
+			13,
+			true
+		)
+	else:
+		for weapon_type in WEAPON_TYPES:
+			add_proficiency_row(proficiencies, weapon_type)
 
 	add_separator(page_content)
 
+	add_text(page_content, "SUPPORT RELATIONSHIPS", 15)
 	add_text(
 		page_content,
-		"SUPPORT RELATIONSHIPS",
-		15
-	)
-
-	add_text(
-		page_content,
-		"Support relationships are not implemented yet.",
-		13,
+		"No support relationships available yet.",
+		12,
 		true
 	)
+
+
+func add_proficiency_row(
+	proficiencies: WeaponProficiencyResource,
+	weapon_type: WeaponResource.WeaponType
+) -> void:
+	var experience: int = proficiencies.get_experience(
+		weapon_type
+	)
+
+	var rank: String = WeaponProficiencyCalculator.get_rank(
+		experience
+	)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	page_content.add_child(row)
+
+	var weapon_name := add_text(
+		row,
+		get_weapon_type_name(weapon_type),
+		12
+	)
+	weapon_name.custom_minimum_size.x = 65
+
+	var rank_label := add_text(row, rank, 13)
+	rank_label.custom_minimum_size.x = 22
+	rank_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+	var progress := ProgressBar.new()
+	progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	progress.custom_minimum_size.y = 9
+	progress.show_percentage = false
+	progress.min_value = 0
+	progress.max_value = 100
+
+	var progress_background := StyleBoxFlat.new()
+	progress_background.bg_color = GameUIStyle.BACKGROUND
+	progress_background.set_corner_radius_all(4)
+
+	var progress_fill := StyleBoxFlat.new()
+	progress_fill.bg_color = GameUIStyle.HEALTH
+	progress_fill.set_corner_radius_all(4)
+
+	progress.add_theme_stylebox_override(
+		"background",
+		progress_background
+	)
+	progress.add_theme_stylebox_override(
+		"fill",
+		progress_fill
+	)
+
+	var current_threshold: int = get_current_rank_threshold(
+		experience
+	)
+
+	var next_threshold: int = (
+		WeaponProficiencyCalculator.get_next_rank_threshold(
+			experience
+		)
+	)
+
+	if experience <= 0:
+		progress.value = 0
+	elif rank == "S":
+		progress.value = 100
+	else:
+		var required: int = next_threshold - current_threshold
+		var gained: int = experience - current_threshold
+
+		progress.value = (
+			float(gained) / float(required)
+		) * 100.0
+
+	row.add_child(progress)
+
+
+func get_current_rank_threshold(experience: int) -> int:
+	if experience >= WeaponProficiencyCalculator.RANK_S:
+		return WeaponProficiencyCalculator.RANK_S
+
+	if experience >= WeaponProficiencyCalculator.RANK_A:
+		return WeaponProficiencyCalculator.RANK_A
+
+	if experience >= WeaponProficiencyCalculator.RANK_B:
+		return WeaponProficiencyCalculator.RANK_B
+
+	if experience >= WeaponProficiencyCalculator.RANK_C:
+		return WeaponProficiencyCalculator.RANK_C
+
+	if experience >= WeaponProficiencyCalculator.RANK_D:
+		return WeaponProficiencyCalculator.RANK_D
+
+	if experience >= WeaponProficiencyCalculator.RANK_E:
+		return WeaponProficiencyCalculator.RANK_E
+
+	return 0
 
 
 func get_weapon_type_name(
