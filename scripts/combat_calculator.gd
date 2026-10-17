@@ -11,7 +11,9 @@ static func can_attack(attacker: Unit, defender: Unit) -> bool:
 	if attacker.current_hp <= 0 or defender.current_hp <= 0 or attacker.team == defender.team:
 		return false
 	var weapon: WeaponResource = attacker.equipped_weapon
-	if weapon == null:
+	if weapon == null or attacker.unit_data == null:
+		return false
+	if not UnitInventory.can_equip(attacker.unit_data, weapon):
 		return false
 	var distance: int = absi(attacker.grid_position.x - defender.grid_position.x) + absi(attacker.grid_position.y - defender.grid_position.y)
 	return distance >= weapon.min_range and distance <= weapon.max_range
