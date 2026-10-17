@@ -5,8 +5,8 @@
 
 [resource]
 script = ExtResource("1_n1qi0")
-promoted_class = ExtResource("1_lxthm")
 class_name_display = "Knight"
+promoted_class = ExtResource("1_lxthm")
 max_hp = 28
 strength = 7
 skill = 4
@@ -15,4 +15,11 @@ defense = 10
 movement_range = 4
 constitution = 13
 luck = 3
+allow_swords = false
+allow_axes = false
+allow_bows = false
+allow_anima = false
+allow_light = false
+allow_dark = false
+allow_staves = false
 metadata/_custom_type_script = "uid://brgpx6u5ytqsu"

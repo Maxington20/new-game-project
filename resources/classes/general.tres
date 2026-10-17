@@ -29,10 +29,10 @@ axe_minimum = 1
 
 [resource]
 script = ExtResource("1_h15ag")
+class_name_display = "General"
 stat_caps = SubResource("Resource_h15ag")
 weapon_promotion_bonuses = SubResource("Resource_3w3tb")
 promotion_bonuses = SubResource("Resource_aix1n")
-class_name_display = "General"
 max_hp = 60
 strength = 20
 skill = 20
@@ -40,4 +40,10 @@ speed = 20
 defense = 20
 resistance = 20
 constitution = 13
+allow_swords = false
+allow_bows = false
+allow_anima = false
+allow_light = false
+allow_dark = false
+allow_staves = false
 metadata/_custom_type_script = "uid://brgpx6u5ytqsu"
