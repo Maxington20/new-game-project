@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="UnitClassResource" format=3 uid="uid://b08i7vcvachnk"]
+
+[ext_resource type="Script" uid="uid://brgpx6u5ytqsu" path="res://scripts/resources/unit_class_resource.gd" id="1_4ed5f"]
+[ext_resource type="Script" uid="uid://d2w4ssjdg7l2h" path="res://scripts/resources/unit_promotion_bonuses_resource.gd" id="1_w4pte"]
+[ext_resource type="Script" uid="uid://b5f0r3i3vd574" path="res://scripts/unit_stat_caps_resource.gd" id="3_bank4"]
+[ext_resource type="Script" uid="uid://bun2rywisw4v6" path="res://scripts/resources/weapon_promotion_bonus_resource.gd" id="4_qdwas"]
+
+[sub_resource type="Resource" id="Resource_4ed5f"]
+script = ExtResource("1_w4pte")
+max_hp = 2
+strength = 1
+skill = 1
+speed = 1
+defense = 2
+resistance = 1
+
+[sub_resource type="Resource" id="Resource_bank4"]
+script = ExtResource("3_bank4")
+strength = 25
+skill = 26
+speed = 24
+defense = 25
+resistance = 25
+
+[sub_resource type="Resource" id="Resource_qdwas"]
+script = ExtResource("4_qdwas")
+axe_minimum = 1
+
+[resource]
+script = ExtResource("1_4ed5f")
+class_name_display = "Paladin"
+stat_caps = SubResource("Resource_bank4")
+weapon_promotion_bonuses = SubResource("Resource_qdwas")
+promotion_bonuses = SubResource("Resource_4ed5f")
+max_hp = 23
+strength = 7
+speed = 7
+defense = 8
+resistance = 6
+movement_range = 8
+constitution = 11
+allow_bows = false
+allow_anima = false
+allow_light = false
+allow_dark = false
+allow_staves = false
+metadata/_custom_type_script = "uid://brgpx6u5ytqsu"

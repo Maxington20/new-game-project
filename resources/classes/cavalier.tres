@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="UnitClassResource" format=3 uid="uid://c3owvaq5hkoi0"]
+
+[ext_resource type="Script" uid="uid://brgpx6u5ytqsu" path="res://scripts/resources/unit_class_resource.gd" id="1_5xn4y"]
+[ext_resource type="Resource" uid="uid://b08i7vcvachnk" path="res://resources/classes/paladin.tres" id="1_sjfh2"]
+
+[resource]
+script = ExtResource("1_5xn4y")
+class_name_display = "Cavalier"
+promoted_class = ExtResource("1_sjfh2")
+skill = 2
+defense = 6
+movement_range = 7
+constitution = 9
+allow_axes = false
+allow_bows = false
+allow_anima = false
+allow_light = false
+allow_dark = false
+allow_staves = false
+metadata/_custom_type_script = "uid://brgpx6u5ytqsu"
