@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CharacterRoster" format=3 uid="uid://dpb4crklq4ltt"]
+
+[ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_ss1wy"]
+[ext_resource type="Script" uid="uid://iu0qmu4kws8s" path="res://scripts/resources/character_roster_resource.gd" id="2_0rxw3"]
+[ext_resource type="Resource" uid="uid://cix0waxxi7v8u" path="res://resources/characters/alden.tres" id="2_45v16"]
+[ext_resource type="Resource" uid="uid://df1qfw6mmh8wh" path="res://resources/characters/brienne.tres" id="3_aspjf"]
+[ext_resource type="Resource" uid="uid://iup8ttdrpt45" path="res://resources/characters/rowan.tres" id="4_707p1"]
+
+[resource]
+script = ExtResource("2_0rxw3")
+characters = Array[ExtResource("1_ss1wy")]([ExtResource("2_45v16"), ExtResource("3_aspjf"), ExtResource("4_707p1")])
+metadata/_custom_type_script = "uid://iu0qmu4kws8s"
