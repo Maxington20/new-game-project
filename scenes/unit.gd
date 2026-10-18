@@ -18,9 +18,29 @@ const PLAYER_COLOR := Color("#4682b4")
 const ENEMY_COLOR := Color("#c74b50")
 const TEXT_COLOR := Color.WHITE
 
-var current_hp: int = 0
+
+var current_hp: int = 0:
+	set(value):
+		if run_state != null:
+			if not run_state.is_alive:
+				current_hp = 0
+				return
+
+			var max_hp: int = value
+			if stats != null:
+				max_hp = stats.max_hp
+
+			current_hp = clampi(value, 0, max_hp)
+			run_state.current_hp = current_hp
+
+			if current_hp == 0:
+				run_state.is_alive = false
+		else:
+			current_hp = value
+			
 var is_moving: bool = false
 var has_acted: bool = false
+var run_state: RunUnitState
 
 var stats: UnitStatsResource:
 	get:
@@ -56,17 +76,28 @@ var max_attack_range: int:
 			return 0
 		return equipped_weapon.max_range
 
+
 func _ready() -> void:
 	position = Vector2(grid_position * CELL_SIZE)
-	if unit_data != null and unit_data.unit_class != null:
+
+	if run_state != null:
+		unit_data = run_state.character
+		current_hp = run_state.current_hp
+
+	elif unit_data != null and unit_data.unit_class != null:
 		unit_data = unit_data.duplicate(false) as UnitResource
+
 		if unit_data.stats == null:
 			unit_data.stats = UnitStatsResource.from_class(unit_data.unit_class)
+			
 		else:
 			unit_data.stats = unit_data.stats.duplicate(true) as UnitStatsResource
+
 		if unit_data.weapon_proficiencies != null:
 			unit_data.weapon_proficiencies = unit_data.weapon_proficiencies.duplicate(true) as WeaponProficiencyResource
+
 		current_hp = unit_data.stats.max_hp
+
 	queue_redraw()
 
 # Call this on an active battlefield unit, rather than promoting
@@ -120,3 +151,14 @@ func move_along_path(path: Array[Vector2i]) -> void:
 		grid_position = cell
 	is_moving = false
 	movement_finished.emit()
+	
+	
+
+func sync_run_state() -> void:
+	if run_state == null:
+		return
+
+	run_state.current_hp = clampi(current_hp, 0, stats.max_hp)
+
+	if run_state.current_hp == 0:
+		run_state.is_alive = false
