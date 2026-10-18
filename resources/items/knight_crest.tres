@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="PromotionItemResource" format=3 uid="uid://c8am6nb4tb6xl"]
+
+[ext_resource type="Script" uid="uid://brgpx6u5ytqsu" path="res://scripts/resources/unit_class_resource.gd" id="1_e2dij"]
+[ext_resource type="Resource" uid="uid://qpst2mgicosl" path="res://resources/classes/knight.tres" id="2_7vq1a"]
+[ext_resource type="Script" uid="uid://c53ftrgwajqh1" path="res://scripts/resources/promotion_item_resource.gd" id="2_cup01"]
+[ext_resource type="Resource" uid="uid://c3owvaq5hkoi0" path="res://resources/classes/cavalier.tres" id="3_kpgdx"]
+
+[resource]
+script = ExtResource("2_cup01")
+item_name = "Knight Crest"
+description = "Promotes eligible mounted and armoured units."
+eligible_classes = Array[ExtResource("1_e2dij")]([ExtResource("2_7vq1a"), ExtResource("3_kpgdx")])
+metadata/_custom_type_script = "uid://c53ftrgwajqh1"
