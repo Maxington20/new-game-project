@@ -36,6 +36,16 @@ enum InteractionState {
 	$CanvasLayer/UnitStatusScreen
 )
 
+signal encounter_victory
+
+var victory_triggered: bool = false
+
+signal encounter_defeat
+
+var defeat_triggered: bool = false
+
+var results_screen: RunResultsScreen = null
+
 var interaction_state: InteractionState = InteractionState.IDLE
 var selected_unit: Unit = null
 
@@ -111,7 +121,9 @@ func _ready() -> void:
 	action_menu.attack_selected.connect(_on_attack_selected)
 	action_menu.wait_selected.connect(_on_wait_selected)
 	action_menu.cancel_selected.connect(_on_cancel_selected)
-
+	encounter_victory.connect(_on_encounter_victory)
+	encounter_defeat.connect(_on_encounter_defeat)
+	
 	combat_dialog.hide()
 	_build_forecast_overlay()
 
@@ -826,6 +838,19 @@ func _on_combat_confirmed() -> void:
 		defender.hide()
 
 	previous_weapon = null
+
+	_check_encounter_victory()
+
+	if victory_triggered:
+		deselect_unit()
+		return
+		
+	_check_encounter_defeat()
+
+	if defeat_triggered:
+		deselect_unit()
+		return
+
 	complete_unit_action()
 
 
@@ -950,9 +975,116 @@ func run_enemy_phase() -> void:
 			if target.current_hp <= 0:
 				target.hide()
 
+			_check_encounter_victory()
+
+			if victory_triggered:
+				is_phase_transitioning = false
+				return
+				
+			_check_encounter_defeat()
+
+			if defeat_triggered:
+				is_phase_transitioning = false
+				return
+
 		if enemy.current_hp > 0:
 			turn_system.mark_unit_acted(enemy)
 
 		await get_tree().create_timer(0.35).timeout
 
 	turn_system.end_phase()
+	
+	
+func _check_encounter_victory() -> void:
+	if victory_triggered:
+		return
+
+	if get_living_units(Unit.Team.ENEMY).is_empty():
+		victory_triggered = true
+		print("ENCOUNTER VICTORY")
+		encounter_victory.emit()
+		
+		
+func _on_encounter_victory() -> void:
+	if active_run == null:
+		print("VICTORY: Standalone battlefield")
+		return
+
+	print("ENCOUNTER COMPLETED: ", active_run.current_encounter)
+
+	if active_run.current_encounter >= RunState.TOTAL_ENCOUNTERS:
+		if active_run.complete_run():
+			print("RUN COMPLETED")
+			print("Run completion state: ", active_run.is_completed)
+			_show_run_results()
+		return
+
+	if active_run.advance_encounter():
+		print("ADVANCED TO ENCOUNTER: ", active_run.current_encounter)
+
+		get_tree().reload_current_scene.call_deferred()
+		
+		
+func _check_encounter_defeat() -> void:
+	if defeat_triggered or victory_triggered:
+		return
+
+	if not get_living_units(Unit.Team.PLAYER).is_empty():
+		return
+
+	defeat_triggered = true
+	print("ENCOUNTER DEFEAT")
+	encounter_defeat.emit()
+	
+	
+func _on_encounter_defeat() -> void:
+	if active_run == null:
+		print("DEFEAT: Standalone battlefield")
+		return
+
+	if active_run.defeat_run():
+		print("RUN DEFEATED")
+		print("Run defeat state: ", active_run.is_defeated)
+		_show_run_results()
+		
+		
+func _show_run_results() -> void:
+	if active_run == null:
+		return
+
+	var summary: RunResultSummary = RunResultSummary.from_run(active_run)
+
+	if summary == null:
+		push_error("Cannot display results for an unfinished run")
+		return
+
+	if results_screen != null:
+		return
+
+	var scene: PackedScene = preload(
+		"res://scenes/ui/run_results_screen.tscn"
+	)
+
+	results_screen = scene.instantiate() as RunResultsScreen
+
+	if results_screen == null:
+		push_error("Failed to instantiate run results screen")
+		return
+
+	$CanvasLayer.add_child(results_screen)
+	results_screen.finished.connect(_on_finish_run_pressed)
+	results_screen.show_results(summary)
+	
+	
+func _on_finish_run_pressed() -> void:
+	if active_run == null:
+		return
+
+	if not active_run.is_completed and not active_run.is_defeated:
+		return
+
+	RunManager.end_run()
+
+	get_tree().change_scene_to_file.call_deferred(
+		"res://scenes/ui/main_menu.tscn"
+	)

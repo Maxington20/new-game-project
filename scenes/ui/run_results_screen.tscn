@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://ddamycynbam15"]
+
+[ext_resource type="Script" uid="uid://ccqxdxgbr0gh6" path="res://scenes/ui/run_results_screen.gd" id="1_0h87t"]
+
+[node name="RunResultsScreen" type="Control" unique_id=1527059257]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_0h87t")
