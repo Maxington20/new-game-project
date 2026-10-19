@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="AchievementCatalogue" format=3 uid="uid://bxyq7qr7q8ubl"]
+
+[ext_resource type="Script" uid="uid://bhiajgxd8aqng" path="res://scripts/resources/character_achievement_resource.gd" id="1_3s7kt"]
+[ext_resource type="Script" uid="uid://divigj57o2fty" path="res://scripts/resources/achievement_catalogue.gd" id="2_aneem"]
+[ext_resource type="Resource" uid="uid://d3d5cflyi2wp1" path="res://resources/achievements/brienne_enemies_defeated.tres" id="2_w2bmg"]
+[ext_resource type="Resource" uid="uid://ccnecd3kvpact" path="res://resources/achievements/brienne_first_blood.tres" id="3_w2bmg"]
+
+[resource]
+script = ExtResource("2_aneem")
+achievements = Array[ExtResource("1_3s7kt")]([ExtResource("2_w2bmg"), ExtResource("3_w2bmg")])
+metadata/_custom_type_script = "uid://divigj57o2fty"

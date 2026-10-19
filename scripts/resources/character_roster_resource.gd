@@ -31,19 +31,40 @@ func contains_character(character: UnitResource) -> bool:
 	return false
 
 
+
 func is_valid() -> bool:
+	var ids: Dictionary = {}
 	var names: Dictionary = {}
 
 	for character in characters:
 		if character == null:
 			return false
 
-		if character.character_name.strip_edges().is_empty():
+		var id: String = character.character_id.strip_edges()
+		var name: String = character.character_name.strip_edges()
+
+		if id.is_empty() or name.is_empty():
 			return false
 
-		if names.has(character.character_name):
+		if ids.has(id) or names.has(name):
 			return false
 
-		names[character.character_name] = true
+		if character.unit_class == null:
+			return false
+
+		ids[id] = true
+		names[name] = true
 
 	return true
+	
+	
+
+func get_character_by_id(character_id: String) -> UnitResource:
+	for character in characters:
+		if character == null:
+			continue
+
+		if character.character_id == character_id:
+			return character
+
+	return null

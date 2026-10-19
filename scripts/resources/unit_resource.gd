@@ -1,6 +1,9 @@
 class_name UnitResource
 extends Resource
 
+@export_group("Identity")
+@export var character_id: String = ""
+
 @export var character_name: String = "Unnamed"
 @export var unit_class: UnitClassResource
 

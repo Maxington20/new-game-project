@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="UnitClassResource" format=3 uid="uid://bftq25aahmpwd"]
+
+[ext_resource type="Script" uid="uid://brgpx6u5ytqsu" path="res://scripts/resources/unit_class_resource.gd" id="1_omfgd"]
+[ext_resource type="Script" uid="uid://d2w4ssjdg7l2h" path="res://scripts/resources/unit_promotion_bonuses_resource.gd" id="1_xwn12"]
+
+[sub_resource type="Resource" id="Resource_htrwf"]
+script = ExtResource("1_xwn12")
+max_hp = 3
+strength = 2
+skill = 1
+speed = 2
+defense = 2
+resistance = 1
+metadata/_custom_type_script = "uid://d2w4ssjdg7l2h"
+
+[resource]
+script = ExtResource("1_omfgd")
+class_name_display = "Great Knight"
+promotion_bonuses = SubResource("Resource_htrwf")
+max_hp = 35
+strength = 8
+skill = 7
+speed = 6
+defense = 6
+movement_range = 6
+constitution = 7
+allow_anima = false
+allow_light = false
+allow_dark = false
+allow_staves = false
+metadata/_custom_type_script = "uid://brgpx6u5ytqsu"

@@ -110,6 +110,36 @@ func promote() -> Dictionary:
 	current_hp = clampi(current_hp + hp_increase, 0, stats.max_hp)
 	queue_redraw()
 	return result
+	
+
+func promote_with_choice(
+	target_class: UnitClassResource,
+	progression: PermanentProgression,
+	catalogue: AchievementCatalogue
+) -> Dictionary:
+	if run_state != null and not run_state.is_alive:
+		return {
+			"success": false,
+			"reason": "Defeated units cannot promote"
+		}
+
+	var result: Dictionary = PromotionService.promote(
+		unit_data,
+		target_class,
+		progression,
+		catalogue
+	)
+
+	if not result["success"]:
+		return result
+
+	var hp_increase: int = int(result["stat_increases"]["max_hp"])
+	current_hp = clampi(current_hp + hp_increase, 0, stats.max_hp)
+
+	queue_redraw()
+
+	return result
+
 
 func _draw() -> void:
 	var color := PLAYER_COLOR if team == Team.PLAYER else ENEMY_COLOR

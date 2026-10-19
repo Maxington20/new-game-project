@@ -55,7 +55,6 @@ var forecast_defender_fields: Dictionary = {}
 
 var is_phase_transitioning: bool = false
 
-
 func _ready() -> void:
 	grid.cell_selected.connect(_on_cell_selected)
 	turn_system.phase_changed.connect(_on_phase_changed)

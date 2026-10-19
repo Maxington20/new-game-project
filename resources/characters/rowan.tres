@@ -13,6 +13,7 @@ metadata/_custom_type_script = "uid://2o0t780ij7ig"
 
 [resource]
 script = ExtResource("1_ysrle")
+character_id = "rowan"
 character_name = "Rowan"
 unit_class = ExtResource("2_ycwbx")
 equipped_weapon = ExtResource("1_rgcty")

@@ -53,6 +53,7 @@ var exp_total: Label
 var level_notice: PanelContainer
 var level_title: Label
 var level_stats_column: VBoxContainer
+var promotion_picker: PromotionSelection
 
 
 func _ready() -> void:
@@ -73,6 +74,9 @@ func _ready() -> void:
 	_build_rank_notification()
 	_build_exp_notification()
 	_build_level_notification()
+	promotion_picker = PromotionSelection.new()
+	promotion_picker.name = "PromotionSelection"
+	add_child(promotion_picker)
 	hide()
 
 
@@ -477,6 +481,51 @@ func _award_and_show_player_exp() -> void:
 					update_hp_labels()
 				var new_level: int = int(progression["previous_level"]) + level_index + 1
 				await _show_level_up(data.character_name, new_level, old_stats, increases)
+
+				# Detect an available promotion after the level-up panel closes.
+				if new_level == PromotionCalculator.MIN_PROMOTION_LEVEL:
+					if player_unit.run_state != null:
+						var permanent_progression: PermanentProgression = \
+							ProgressionSaveSystem.load_progression()
+						var achievement_catalogue: AchievementCatalogue = load(
+							"res://resources/achievements/achievement_catalogue.tres"
+						)
+						if permanent_progression != null and achievement_catalogue != null:
+							var choices: Array[UnitClassResource] = \
+								PromotionChoiceProvider.get_choices(
+									player_unit.run_state,
+									permanent_progression,
+									achievement_catalogue
+								)
+							if not choices.is_empty():
+								print(
+									"PROMOTION AVAILABLE: ",
+									data.character_name,
+									" | Options: ",
+									choices.size()
+								)
+												# Wait for the player's choice before combat continues.
+								exp_notice.hide()
+								promotion_picker.show_choices(data.character_name, choices)
+								var selected_class: UnitClassResource = await promotion_picker.promotion_selected
+								var promotion_result: Dictionary = player_unit.promote_with_choice(
+									selected_class,
+									permanent_progression,
+									achievement_catalogue
+								)
+								if not bool(promotion_result.get("success", false)):
+									push_error("Promotion failed: " + str(promotion_result))
+								else:
+									player_hp_bar.max_value = player_unit.stats.max_hp
+									player_hp_bar.value = player_unit.current_hp
+									update_hp_labels()
+									print("PROMOTION APPLIED: ", data.character_name,
+										" -> ", data.unit_class.class_name_display,
+										" | Lv ", data.level,
+										" | EXP ", data.experience,
+										" | HP ", player_unit.current_hp, "/", player_unit.stats.max_hp)
+								exp_notice.show()
+
 				level_index += 1
 
 			# Only reveal the remaining EXP after the level-up panel closes.

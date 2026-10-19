@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CharacterAchievementResource" format=3 uid="uid://ccnecd3kvpact"]
+
+[ext_resource type="Script" uid="uid://bhiajgxd8aqng" path="res://scripts/resources/character_achievement_resource.gd" id="1_hi38x"]
+
+[resource]
+script = ExtResource("1_hi38x")
+achievement_id = "first_blood"
+achievement_name = "First Blood"
+description = "Defeat 10 enemies as Brienne across any number of runs."
+statistic_id = "enemies_defeated"
+required_progress = 10
+character_id = "brienne"
+metadata/_custom_type_script = "uid://bhiajgxd8aqng"

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CharacterAchievementResource" format=3 uid="uid://d3d5cflyi2wp1"]
+
+[ext_resource type="Script" uid="uid://bhiajgxd8aqng" path="res://scripts/resources/character_achievement_resource.gd" id="1_8kp0b"]
+[ext_resource type="Resource" uid="uid://bftq25aahmpwd" path="res://resources/classes/great_knight.tres" id="2_iarvw"]
+
+[resource]
+script = ExtResource("1_8kp0b")
+achievement_id = "veteran_defender"
+achievement_name = "Veteran Defender"
+description = "Defeats 100 enemies as Brienne across any number of runs."
+statistic_id = "enemies_defeated"
+required_progress = 100
+character_id = "brienne"
+unlocked_promotion = ExtResource("2_iarvw")
+metadata/_custom_type_script = "uid://bhiajgxd8aqng"

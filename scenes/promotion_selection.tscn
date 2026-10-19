@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://cwdhohpamuplk"]
+
+[ext_resource type="Script" uid="uid://rjv5excrjnw4" path="res://scenes/promotion_selection.gd" id="1_lmqf6"]
+
+[node name="PromotionSelection" type="Control" unique_id=624350183]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_lmqf6")

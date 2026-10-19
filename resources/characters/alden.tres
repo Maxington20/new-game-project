@@ -36,6 +36,7 @@ metadata/_custom_type_script = "uid://2o0t780ij7ig"
 
 [resource]
 script = ExtResource("1_7s321")
+character_id = "alden"
 character_name = "Alden"
 unit_class = ExtResource("2_42tls")
 experience = 95
