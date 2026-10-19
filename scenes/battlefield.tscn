@@ -83,3 +83,5 @@ ok_button_text = "Attack"
 [node name="BattleAnimationOverlay" parent="CanvasLayer" unique_id=1692097559 instance=ExtResource("13_bje3b")]
 
 [node name="UnitStatusScreen" parent="CanvasLayer" unique_id=1213005715 instance=ExtResource("15_3w3tb")]
+
+[node name="Test" type="Node" parent="." unique_id=744283424]

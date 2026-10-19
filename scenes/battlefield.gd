@@ -55,6 +55,55 @@ var forecast_defender_fields: Dictionary = {}
 
 var is_phase_transitioning: bool = false
 
+var active_run: RunState = null
+
+
+func _deploy_run_army() -> void:
+	if active_run == null:
+		return
+
+	var spawn_positions: Array[Vector2i] = [
+		Vector2i(3, 4),
+		Vector2i(3, 6),
+		Vector2i(2, 5),
+		Vector2i(2, 7),
+		Vector2i(4, 5),
+		Vector2i(4, 7),
+		Vector2i(1, 4),
+		Vector2i(1, 6)
+	]
+
+	# Remove the scene's placeholder player units.
+	for unit in get_all_units():
+		if unit.team == Unit.Team.PLAYER:
+			remove_child(unit)
+			unit.queue_free()
+
+	var deployable: Array[RunUnitState] = (
+		BattlefieldDeployment.get_deployable_units(active_run)
+	)
+
+	for index in range(mini(deployable.size(), spawn_positions.size())):
+		var unit: Unit = BattlefieldDeployment.create_unit(
+			deployable[index],
+			spawn_positions[index]
+		)
+
+		if unit == null:
+			continue
+
+		add_child(unit)
+
+		print(
+			"DEPLOYED: ",
+			unit.unit_data.character_name,
+			" | HP: ",
+			unit.current_hp,
+			"/",
+			unit.unit_data.stats.max_hp
+		)
+
+
 func _ready() -> void:
 	grid.cell_selected.connect(_on_cell_selected)
 	turn_system.phase_changed.connect(_on_phase_changed)
@@ -77,6 +126,9 @@ func _ready() -> void:
 	weapon_menu_buttons.add_theme_constant_override("separation", 10)
 	weapon_menu.add_child(weapon_menu_buttons)
 
+	active_run = RunManager.get_active_run()
+
+	_deploy_run_army()
 	turn_system.initialize(get_all_units())
 
 
