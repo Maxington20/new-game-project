@@ -1,25 +1,27 @@
+
 extends Node
 
 
 func _ready() -> void:
-	print("=== TERMINAL RUN STATE TEST ===")
+	print("=== ENEMY DEPLOYMENT TEST ===")
 
-	var run := RunState.new()
-	run.current_encounter = 3
+	var encounter: EncounterResource = load(
+		"res://resources/encounters/encounter_01.tres"
+	)
 
-	print("Advance active run: ", run.advance_encounter())
-	print("Encounter: ", run.current_encounter)
+	var units := EnemyDeployment.create_encounter_units(encounter)
 
-	run.is_defeated = true
+	print("Created units: ", units.size())
 
-	print("Advance defeated run: ", run.advance_encounter())
-	print("Encounter after defeat: ", run.current_encounter)
+	for unit in units:
+		print(
+			unit.unit_data.character_name,
+			" | Team: ",
+			unit.team,
+			" | Position: ",
+			unit.grid_position
+		)
 
-	var completed_run := RunState.new()
-	completed_run.current_encounter = 8
-	completed_run.complete_run()
-
-	print("Completed run: ", completed_run.is_completed)
-	print("Advance completed run: ", completed_run.advance_encounter())
+		unit.queue_free()
 
 	print("=== TEST COMPLETE ===")

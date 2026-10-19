@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EncounterResource" format=3 uid="uid://bwj0bxgrrecu7"]
+
+[ext_resource type="Script" uid="uid://ds8xh6xaau5mw" path="res://scripts/resources/unit_resource.gd" id="1_8ua8k"]
+[ext_resource type="Resource" uid="uid://dqkc1x5m4kraq" path="res://resources/characters/garrick.tres" id="2_kcif2"]
+[ext_resource type="Resource" uid="uid://soqh266psxvf" path="res://resources/characters/voss.tres" id="3_x8vl8"]
+[ext_resource type="Resource" uid="uid://txr0ofu3mlfa" path="res://resources/characters/silas.tres" id="4_y4757"]
+[ext_resource type="Resource" uid="uid://b0ids658eiepj" path="res://resources/characters/brom.tres" id="5_hft4i"]
+[ext_resource type="Script" uid="uid://m5w42invnj4f" path="res://scripts/resources/encounter_resource.gd" id="6_7xlsc"]
+
+[resource]
+script = ExtResource("6_7xlsc")
+encounter_number = 7
+enemies = Array[ExtResource("1_8ua8k")]([ExtResource("2_kcif2"), ExtResource("3_x8vl8"), ExtResource("4_y4757"), ExtResource("5_hft4i")])
+enemy_spawn_positions = Array[Vector2i]([Vector2i(10, 3), Vector2i(13, 7), Vector2i(11, 5), Vector2i(12, 9)])
+metadata/_custom_type_script = "uid://m5w42invnj4f"

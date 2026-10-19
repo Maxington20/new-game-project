@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EncounterCollection" format=3 uid="uid://dnjarilc24cd5"]
+
+[ext_resource type="Script" uid="uid://m5w42invnj4f" path="res://scripts/resources/encounter_resource.gd" id="1_3qe87"]
+[ext_resource type="Script" uid="uid://ek47wcgcj2or" path="res://scripts/resources/encounter_collection.gd" id="2_k4acy"]
+[ext_resource type="Resource" uid="uid://d3kpq1p71r10s" path="res://resources/encounters/encounter_01.tres" id="2_sr8ca"]
+[ext_resource type="Resource" uid="uid://dn7ed2gkvmc74" path="res://resources/encounters/encounter_02.tres" id="3_4yw77"]
+[ext_resource type="Resource" uid="uid://chmphrmi8vijc" path="res://resources/encounters/encounter_03.tres" id="4_vqhy7"]
+[ext_resource type="Resource" uid="uid://dn5dxmpmkwhi5" path="res://resources/encounters/encounter_04.tres" id="5_oam13"]
+[ext_resource type="Resource" uid="uid://efr27d7ructj" path="res://resources/encounters/encounter_05.tres" id="6_c3rpt"]
+[ext_resource type="Resource" uid="uid://btsfmxs0ym78p" path="res://resources/encounters/encounter_06.tres" id="7_hek80"]
+[ext_resource type="Resource" uid="uid://bwj0bxgrrecu7" path="res://resources/encounters/encounter_07.tres" id="8_q5m8i"]
+[ext_resource type="Resource" uid="uid://das3q4me36m7o" path="res://resources/encounters/encounter_08.tres" id="9_qtaw2"]
+
+[resource]
+script = ExtResource("2_k4acy")
+encounters = Array[ExtResource("1_3qe87")]([ExtResource("2_sr8ca"), ExtResource("3_4yw77"), ExtResource("4_vqhy7"), ExtResource("5_oam13"), ExtResource("6_c3rpt"), ExtResource("7_hek80"), ExtResource("8_q5m8i"), ExtResource("9_qtaw2")])
+metadata/_custom_type_script = "uid://ek47wcgcj2or"

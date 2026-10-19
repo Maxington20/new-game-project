@@ -5,6 +5,12 @@
 [ext_resource type="Script" uid="uid://d0p2qphidwj4q" path="res://scripts/resources/weapon_resource.gd" id="2_raquf"]
 [ext_resource type="Resource" uid="uid://bkcrldislh4mi" path="res://resources/classes/archer.tres" id="2_rok6s"]
 [ext_resource type="Script" uid="uid://2o0t780ij7ig" path="res://scripts/resources/weapon_proficiency_resource.gd" id="4_mhqi0"]
+[ext_resource type="Script" uid="uid://t10sajlur7qt" path="res://scripts/resources/unit_stats_resource.gd" id="4_pvn15"]
+
+[sub_resource type="Resource" id="Resource_43edx"]
+script = ExtResource("4_pvn15")
+max_hp = 1
+metadata/_custom_type_script = "uid://t10sajlur7qt"
 
 [sub_resource type="Resource" id="Resource_h1idy"]
 script = ExtResource("4_mhqi0")
@@ -15,6 +21,7 @@ metadata/_custom_type_script = "uid://2o0t780ij7ig"
 script = ExtResource("1_awb3u")
 character_name = "Silas"
 unit_class = ExtResource("2_rok6s")
+stats = SubResource("Resource_43edx")
 equipped_weapon = ExtResource("1_rok6s")
 inventory = Array[ExtResource("2_raquf")]([ExtResource("1_rok6s")])
 weapon_proficiencies = SubResource("Resource_h1idy")

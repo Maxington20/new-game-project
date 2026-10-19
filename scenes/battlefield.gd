@@ -12,6 +12,10 @@ enum InteractionState {
 	COMBAT_RESOLVING
 }
 
+const DEFAULT_ENCOUNTERS: EncounterCollection = preload(
+	"res://resources/encounters/default_encounters.tres"
+)
+
 @onready var grid = $Grid
 @onready var turn_system: BattleTurnSystem = $BattleTurnSystem
 @onready var enemy_ai: EnemyAI = $EnemyAI
@@ -141,6 +145,10 @@ func _ready() -> void:
 	active_run = RunManager.get_active_run()
 
 	_deploy_run_army()
+
+	if not _deploy_encounter_enemies():
+		return
+
 	turn_system.initialize(get_all_units())
 
 
@@ -1088,3 +1096,56 @@ func _on_finish_run_pressed() -> void:
 	get_tree().change_scene_to_file.call_deferred(
 		"res://scenes/ui/main_menu.tscn"
 	)
+
+
+
+
+func _deploy_encounter_enemies() -> bool:
+	var encounter := _load_current_encounter()
+
+	if encounter == null:
+		push_error("Cannot initialize battlefield without a valid encounter")
+		return false
+
+	var enemies := EnemyDeployment.create_encounter_units(encounter)
+
+	for enemy in enemies:
+		add_child(enemy)
+
+	print("DEPLOYED ENCOUNTER ENEMIES: ", enemies.size())
+
+	return true
+	
+
+func _load_current_encounter() -> EncounterResource:
+	var encounter_number: int = 1
+
+	if active_run != null:
+		encounter_number = active_run.current_encounter
+
+	var encounter := DEFAULT_ENCOUNTERS.get_encounter(encounter_number)
+
+	if encounter == null:
+		push_error(
+			"Encounter not found in collection: "
+			+ str(encounter_number)
+		)
+		return null
+
+	if not encounter.is_valid():
+		push_error(
+			"Invalid encounter configuration: "
+			+ str(encounter_number)
+		)
+		return null
+
+	if encounter.encounter_number != encounter_number:
+		push_error(
+			"Encounter number mismatch: "
+			+ str(encounter_number)
+		)
+		return null
+
+	print("LOADED ENCOUNTER: ", encounter_number)
+
+	return encounter

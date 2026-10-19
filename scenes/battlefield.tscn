@@ -6,11 +6,7 @@
 [ext_resource type="Resource" uid="uid://cix0waxxi7v8u" path="res://resources/characters/alden.tres" id="4_htbo0"]
 [ext_resource type="Resource" uid="uid://df1qfw6mmh8wh" path="res://resources/characters/brienne.tres" id="5_3avj7"]
 [ext_resource type="Resource" uid="uid://iup8ttdrpt45" path="res://resources/characters/rowan.tres" id="6_3xjfw"]
-[ext_resource type="Resource" uid="uid://dqkc1x5m4kraq" path="res://resources/characters/garrick.tres" id="7_udire"]
-[ext_resource type="Resource" uid="uid://soqh266psxvf" path="res://resources/characters/voss.tres" id="8_bje3b"]
-[ext_resource type="Resource" uid="uid://txr0ofu3mlfa" path="res://resources/characters/silas.tres" id="9_3fwhu"]
 [ext_resource type="Script" uid="uid://bmlrgnp67bpqy" path="res://scripts/battle_turn_system.gd" id="10_3avj7"]
-[ext_resource type="Resource" uid="uid://b0ids658eiepj" path="res://resources/characters/brom.tres" id="10_udire"]
 [ext_resource type="PackedScene" uid="uid://bvr5jlmkk8via" path="res://scenes/unit_action_menu.tscn" id="11_3xjfw"]
 [ext_resource type="Script" uid="uid://bq0sa366gffd6" path="res://scripts/enemy_ai.gd" id="12_3fwhu"]
 [ext_resource type="PackedScene" uid="uid://bbq3kuy61rfqf" path="res://scenes/battle_animation_overlay.tscn" id="13_bje3b"]
@@ -34,26 +30,6 @@ grid_position = Vector2i(3, 6)
 [node name="Unit3" parent="." unique_id=1616180016 instance=ExtResource("2_d5hba")]
 unit_data = ExtResource("6_3xjfw")
 grid_position = Vector2i(2, 5)
-
-[node name="Unit4" parent="." unique_id=1400224033 instance=ExtResource("2_d5hba")]
-unit_data = ExtResource("7_udire")
-team = 1
-grid_position = Vector2i(12, 4)
-
-[node name="Unit5" parent="." unique_id=573948291 instance=ExtResource("2_d5hba")]
-unit_data = ExtResource("8_bje3b")
-team = 1
-grid_position = Vector2i(12, 6)
-
-[node name="Unit6" parent="." unique_id=1289859485 instance=ExtResource("2_d5hba")]
-unit_data = ExtResource("9_3fwhu")
-team = 1
-grid_position = Vector2i(13, 5)
-
-[node name="Unit7" parent="." unique_id=1138286430 instance=ExtResource("2_d5hba")]
-unit_data = ExtResource("10_udire")
-team = 1
-grid_position = Vector2i(11, 8)
 
 [node name="BattleTurnSystem" type="Node" parent="." unique_id=1373098752]
 script = ExtResource("10_3avj7")

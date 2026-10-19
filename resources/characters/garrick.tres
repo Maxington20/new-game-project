@@ -5,6 +5,12 @@
 [ext_resource type="Script" uid="uid://d0p2qphidwj4q" path="res://scripts/resources/weapon_resource.gd" id="2_0infd"]
 [ext_resource type="Resource" uid="uid://b8pyjuvmpocc1" path="res://resources/classes/swordsman.tres" id="2_foj1a"]
 [ext_resource type="Script" uid="uid://2o0t780ij7ig" path="res://scripts/resources/weapon_proficiency_resource.gd" id="4_1hkgj"]
+[ext_resource type="Script" uid="uid://t10sajlur7qt" path="res://scripts/resources/unit_stats_resource.gd" id="4_cmdy8"]
+
+[sub_resource type="Resource" id="Resource_aeomo"]
+script = ExtResource("4_cmdy8")
+max_hp = 1
+metadata/_custom_type_script = "uid://t10sajlur7qt"
 
 [sub_resource type="Resource" id="Resource_aq1qs"]
 script = ExtResource("4_1hkgj")
@@ -15,6 +21,7 @@ metadata/_custom_type_script = "uid://2o0t780ij7ig"
 script = ExtResource("1_bihc7")
 character_name = "Garrick"
 unit_class = ExtResource("2_foj1a")
+stats = SubResource("Resource_aeomo")
 equipped_weapon = ExtResource("1_foj1a")
 inventory = Array[ExtResource("2_0infd")]([ExtResource("1_foj1a")])
 weapon_proficiencies = SubResource("Resource_aq1qs")
