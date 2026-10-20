@@ -35,6 +35,9 @@ const ATTACK_DISTANCE: float = 48.0
 const WEAPON_EXPERIENCE_PER_STRIKE: int = 1
 
 var battlefield_grid: BattlefieldGrid = null
+var terrain_scenery: Control
+var enemy_terrain_ground: ColorRect
+var player_terrain_ground: ColorRect
 var player_unit: Unit = null
 var enemy_unit: Unit = null
 var is_playing: bool = false
@@ -62,7 +65,11 @@ func _ready() -> void:
 
 	background.color = BACKGROUND_COLOR
 	ground.color = GROUND_COLOR
-
+	
+	setup_terrain_backgrounds()
+	
+	setup_terrain_scenery()
+	
 	enemy_sprite.color = ENEMY_COLOR
 	player_sprite.color = PLAYER_COLOR
 
@@ -99,6 +106,15 @@ func layout_battle_screen() -> void:
 		screen_size.x,
 		maxf(0.0, screen_size.y - ground.position.y)
 	)
+	
+	var ground_y: float = center_y + 80
+	var ground_height: float = maxf(0.0, screen_size.y - ground_y)
+
+	enemy_terrain_ground.position = Vector2(0, ground_y)
+	enemy_terrain_ground.size = Vector2(center_x, ground_height)
+
+	player_terrain_ground.position = Vector2(center_x, ground_y)
+	player_terrain_ground.size = Vector2(center_x, ground_height)
 
 	enemy_sprite.size = SPRITE_SIZE
 	player_sprite.size = SPRITE_SIZE
@@ -142,7 +158,12 @@ func setup_battle(attacker: Unit, defender: Unit) -> void:
 	else:
 		player_unit = defender
 		enemy_unit = attacker
-
+		
+	enemy_terrain_ground.color = get_battle_terrain_color(enemy_unit)
+	player_terrain_ground.color = get_battle_terrain_color(player_unit)
+	
+	update_terrain_scenery()
+	
 	player_name.text = player_unit.unit_data.character_name
 	enemy_name.text = enemy_unit.unit_data.character_name
 
@@ -774,3 +795,124 @@ func finish_battle() -> void:
 	hide()
 	is_playing = false
 	battle_animation_finished.emit()
+
+
+
+func setup_terrain_backgrounds() -> void:
+	enemy_terrain_ground = ColorRect.new()
+	enemy_terrain_ground.name = "EnemyTerrainGround"
+	enemy_terrain_ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background.add_child(enemy_terrain_ground)
+
+	player_terrain_ground = ColorRect.new()
+	player_terrain_ground.name = "PlayerTerrainGround"
+	player_terrain_ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background.add_child(player_terrain_ground)
+
+	# The new terrain sections replace the original ground visually.
+	ground.hide()
+
+
+
+func get_battle_terrain_color(unit: Unit) -> Color:
+	if battlefield_grid == null:
+		return GROUND_COLOR
+
+	var terrain: TerrainResource = battlefield_grid.get_terrain_at(
+		unit.grid_position
+	)
+
+	if terrain == null:
+		return GROUND_COLOR
+
+	match terrain.terrain_type:
+		TerrainResource.TerrainType.FOREST:
+			return Color("#285c32")
+
+		TerrainResource.TerrainType.FORT:
+			return Color("#707986")
+
+		TerrainResource.TerrainType.LAVA:
+			return Color("#9b3f28")
+
+		_:
+			return GROUND_COLOR
+
+
+
+func setup_terrain_scenery() -> void:
+	terrain_scenery = Control.new()
+	terrain_scenery.name = "TerrainScenery"
+	terrain_scenery.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	terrain_scenery.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	background.add_child(terrain_scenery)
+
+
+func update_terrain_scenery() -> void:
+	for child in terrain_scenery.get_children():
+		child.queue_free()
+
+	if battlefield_grid == null:
+		return
+
+	var half_width: float = size.x / 2.0
+
+	var enemy_terrain: TerrainResource = battlefield_grid.get_terrain_at(
+		enemy_unit.grid_position
+	)
+
+	var player_terrain: TerrainResource = battlefield_grid.get_terrain_at(
+		player_unit.grid_position
+	)
+
+	if enemy_terrain != null:
+		if enemy_terrain.terrain_type == TerrainResource.TerrainType.FOREST:
+			add_forest_scenery(Vector2(half_width * 0.5, size.y * 0.52))
+
+	if player_terrain != null:
+		if player_terrain.terrain_type == TerrainResource.TerrainType.FOREST:
+			add_forest_scenery(Vector2(half_width * 1.5, size.y * 0.52))
+
+
+
+func add_forest_scenery(center: Vector2) -> void:
+	# Match the ground level used by layout_battle_screen().
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	var tree_data: Array[Dictionary] = [
+		{"offset": -110.0, "height": 75.0},
+		{"offset": -55.0, "height": 95.0},
+		{"offset": 55.0, "height": 85.0},
+		{"offset": 110.0, "height": 70.0}
+	]
+
+	for data in tree_data:
+		var tree_height: float = data["height"]
+		var tree_x: float = center.x + data["offset"]
+
+		# Position the tree so its trunk reaches the ground.
+		var tree_position := Vector2(
+			tree_x,
+			ground_y - tree_height
+		)
+
+		var tree := ColorRect.new()
+		tree.color = Color("#174527")
+		tree.size = Vector2(34, tree_height - 10.0)
+		tree.position = tree_position
+		tree.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		terrain_scenery.add_child(tree)
+
+		var highlight := ColorRect.new()
+		highlight.color = Color("#327a43")
+		highlight.size = Vector2(22, tree_height * 0.55)
+		highlight.position = Vector2(6, 5)
+		highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tree.add_child(highlight)
+
+		var trunk := ColorRect.new()
+		trunk.color = Color("#765139")
+		trunk.size = Vector2(10, 25)
+		trunk.position = Vector2(12, tree_height - 25.0)
+		trunk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tree.add_child(trunk)

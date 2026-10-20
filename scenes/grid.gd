@@ -1,3 +1,4 @@
+
 class_name BattlefieldGrid
 extends Node2D
 
@@ -12,6 +13,7 @@ const GRID_HEIGHT: int = 12
 @export var color_light: Color = Color("#8fae82")
 @export var color_dark: Color = Color("#78996c")
 @export var color_lines: Color = Color("#425c3b")
+
 const COLOR_SELECTED := Color("#e8d36a")
 const COLOR_MOVEMENT := Color("#6a9fe8")
 const COLOR_ATTACK := Color("#d96b6b")
@@ -26,6 +28,7 @@ const DIRECTIONS: Array[Vector2i] = [
 var selected_cell: Vector2i = Vector2i(-1, -1)
 var highlighted_cells: Array[Vector2i] = []
 var attack_cells: Array[Vector2i] = []
+
 
 func _draw() -> void:
 	for y in range(GRID_HEIGHT):
@@ -59,6 +62,11 @@ func _draw() -> void:
 			# Draw the terrain.
 			draw_rect(rect, color)
 
+			# Draw terrain decorations.
+			if terrain != null and not blocked_cells.has(cell):
+				if terrain.terrain_type == TerrainResource.TerrainType.FOREST:
+					draw_forest_tile(rect.position)
+
 			# Draw normal grid lines.
 			draw_rect(rect, color_lines, false, 1.0)
 
@@ -89,6 +97,57 @@ func _draw() -> void:
 				)
 
 
+func draw_forest_tile(tile_position: Vector2) -> void:
+	# Three small trees arranged in a cluster.
+	draw_pixel_tree(tile_position + Vector2(5, 5), 0.85)
+	draw_pixel_tree(tile_position + Vector2(17, 3), 0.85)
+	draw_pixel_tree(tile_position + Vector2(11, 16), 0.85)
+
+
+func draw_pixel_tree(
+	position: Vector2,
+	scale_factor: float = 1.0
+) -> void:
+	var foliage_dark := Color("#164526")
+	var foliage_light := Color("#3c9650")
+	var trunk_color := Color("#795437")
+
+	# Draw a small trunk.
+	draw_rect(
+		Rect2(
+			position + Vector2(5, 11) * scale_factor,
+			Vector2(3, 5) * scale_factor
+		),
+		trunk_color
+	)
+
+	# Draw the tree canopy using overlapping rectangles.
+	draw_rect(
+		Rect2(
+			position + Vector2(3, 4) * scale_factor,
+			Vector2(8, 9) * scale_factor
+		),
+		foliage_dark
+	)
+
+	draw_rect(
+		Rect2(
+			position + Vector2(1, 7) * scale_factor,
+			Vector2(12, 4) * scale_factor
+		),
+		foliage_dark
+	)
+
+	# Highlight the upper part of the canopy.
+	draw_rect(
+		Rect2(
+			position + Vector2(4, 5) * scale_factor,
+			Vector2(5, 3) * scale_factor
+		),
+		foliage_light
+	)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -114,7 +173,6 @@ func is_cell_in_bounds(cell: Vector2i) -> bool:
 
 func cell_to_world(cell: Vector2i) -> Vector2:
 	return Vector2(cell * CELL_SIZE) + Vector2.ONE * CELL_SIZE / 2.0
-
 
 
 func get_reachable_cells(
@@ -176,7 +234,6 @@ func get_reachable_cells(
 		"distances": distances,
 		"previous": previous
 	}
-
 
 
 func get_attack_cells(
@@ -252,10 +309,11 @@ func reconstruct_path(
 
 	return path
 
+
 func is_cell_walkable(cell: Vector2i) -> bool:
 	return is_cell_in_bounds(cell) and not blocked_cells.has(cell)
-	
-	
+
+
 func get_path_distance(
 	start: Vector2i,
 	destination: Vector2i
@@ -308,8 +366,6 @@ func get_path_distance(
 	return -1
 
 
-
-
 func get_terrain_at(cell: Vector2i) -> TerrainResource:
 	for terrain_cell in terrain_cells:
 		if terrain_cell == null:
@@ -319,7 +375,6 @@ func get_terrain_at(cell: Vector2i) -> TerrainResource:
 			return terrain_cell.terrain
 
 	return null
-
 
 
 func get_terrain_color(terrain: TerrainResource) -> Color:
@@ -338,7 +393,6 @@ func get_terrain_color(terrain: TerrainResource) -> Color:
 
 		_:
 			return Color.TRANSPARENT
-
 
 
 func get_movement_cost(cell: Vector2i) -> int:
