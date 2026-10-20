@@ -1014,6 +1014,7 @@ func _on_cancel_selected() -> void:
 	select_unit(selected_unit)
 
 
+
 func _on_phase_changed(team: Unit.Team) -> void:
 	is_phase_transitioning = true
 
@@ -1024,10 +1025,25 @@ func _on_phase_changed(team: Unit.Team) -> void:
 
 	await apply_turn_start_terrain_effects(team)
 
+	# Terrain damage may have defeated the last enemy.
+	_check_encounter_victory()
+
+	if victory_triggered:
+		is_phase_transitioning = false
+		return
+
+	# Terrain damage may have defeated the entire player army.
+	_check_encounter_defeat()
+
+	if defeat_triggered:
+		is_phase_transitioning = false
+		return
+
 	if team == Unit.Team.PLAYER:
 		is_phase_transitioning = false
 	else:
 		run_enemy_phase()
+
 
 
 
@@ -1308,6 +1324,7 @@ func get_unit_terrain(unit: Unit) -> TerrainResource:
 
 
 
+
 func apply_turn_start_terrain_effects(team: Unit.Team) -> void:
 	for unit in get_living_units(team):
 		var terrain: TerrainResource = get_unit_terrain(unit)
@@ -1315,6 +1332,37 @@ func apply_turn_start_terrain_effects(team: Unit.Team) -> void:
 		if terrain == null:
 			continue
 
+		# Apply turn-start damage first.
+		var damage: int = TerrainEffectCalculator.calculate_terrain_damage(
+			unit.current_hp,
+			terrain,
+			false
+		)
+
+		if damage > 0:
+			var previous_hp: int = unit.current_hp
+			unit.current_hp -= damage
+
+			print(
+				"TERRAIN TURN DAMAGE: ",
+				unit.unit_data.character_name,
+				" -", damage,
+				" HP (", unit.current_hp,
+				"/", unit.stats.max_hp, ")"
+			)
+
+			await terrain_effect_popup.show_damage(
+				unit.unit_data.character_name,
+				previous_hp,
+				unit.stats.max_hp,
+				damage
+			)
+
+			if unit.current_hp <= 0:
+				unit.hide()
+				continue
+
+		# Apply healing if the unit survived.
 		var healing: int = TerrainEffectCalculator.calculate_turn_start_healing(
 			unit.current_hp,
 			unit.stats.max_hp,
@@ -1341,7 +1389,6 @@ func apply_turn_start_terrain_effects(team: Unit.Team) -> void:
 			unit.stats.max_hp,
 			healing
 		)
-
 
 
 func _on_unit_terrain_cell_entered(

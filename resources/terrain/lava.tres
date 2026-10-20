@@ -5,4 +5,6 @@
 [resource]
 script = ExtResource("1_6t38i")
 terrain_type = 5
+damage_on_enter = 5
+damage_on_turn_start = 1
 metadata/_custom_type_script = "uid://gudx7v1d2qo1"
