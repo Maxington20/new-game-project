@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://d1tp26oumaovy"]
+
+[ext_resource type="Script" uid="uid://bdxk7p8jgwg8a" path="res://scenes/grid.gd" id="1_seacg"]
+
+[node name="Grid" type="Node2D" unique_id=1665304342]
+script = ExtResource("1_seacg")
+blocked_cells = Array[Vector2i]([Vector2i(7, 4), Vector2i(7, 5), Vector2i(7, 6), Vector2i(7, 7)])
+color_light = Color(0.72156864, 0.6431373, 0.5294118, 1)
+color_dark = Color(0.6392157, 0.54901963, 0.4392157, 1)
+color_lines = Color(0.4117647, 0.34509805, 0.25882354, 1)

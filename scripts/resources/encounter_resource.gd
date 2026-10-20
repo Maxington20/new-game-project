@@ -4,12 +4,17 @@ extends Resource
 
 @export_range(1, 8) var encounter_number: int = 1
 
+@export var battlefield_scene: PackedScene
+
 @export var enemies: Array[UnitResource] = []
 
 @export var enemy_spawn_positions: Array[Vector2i] = []
 
 
 func is_valid() -> bool:
+	if battlefield_scene == null:
+		return false
+
 	if enemies.is_empty():
 		return false
 

@@ -1,4 +1,4 @@
-
+class_name BattlefieldGrid
 extends Node2D
 
 signal cell_selected(cell: Vector2i)
@@ -7,9 +7,10 @@ const CELL_SIZE: int = 32
 const GRID_WIDTH: int = 16
 const GRID_HEIGHT: int = 12
 
-const COLOR_LIGHT := Color("#8fae82")
-const COLOR_DARK := Color("#78996c")
-const COLOR_LINES := Color("#425c3b")
+@export var blocked_cells: Array[Vector2i] = []
+@export var color_light: Color = Color("#8fae82")
+@export var color_dark: Color = Color("#78996c")
+@export var color_lines: Color = Color("#425c3b")
 const COLOR_SELECTED := Color("#e8d36a")
 const COLOR_MOVEMENT := Color("#6a9fe8")
 const COLOR_ATTACK := Color("#d96b6b")
@@ -26,6 +27,7 @@ var highlighted_cells: Array[Vector2i] = []
 var attack_cells: Array[Vector2i] = []
 
 
+
 func _draw() -> void:
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
@@ -36,10 +38,10 @@ func _draw() -> void:
 				Vector2(CELL_SIZE, CELL_SIZE)
 			)
 
-			var color := COLOR_LIGHT
+			var color := color_light
 
 			if (x + y) % 2 == 1:
-				color = COLOR_DARK
+				color = color_dark
 
 			if cell in attack_cells:
 				color = COLOR_ATTACK
@@ -50,9 +52,12 @@ func _draw() -> void:
 			if cell == selected_cell:
 				color = COLOR_SELECTED
 
-			draw_rect(rect, color)
-			draw_rect(rect, COLOR_LINES, false, 1.0)
+			# Blocked terrain overrides the normal tile colour.
+			if blocked_cells.has(cell):
+				color = Color("#555555")
 
+			draw_rect(rect, color)
+			draw_rect(rect, color_lines, false, 1.0)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -84,7 +89,8 @@ func cell_to_world(cell: Vector2i) -> Vector2:
 func get_reachable_cells(
 	origin: Vector2i,
 	movement_range: int,
-	occupied_cells: Array[Vector2i]
+	occupied_cells: Array[Vector2i],
+	friendly_cells: Array[Vector2i] = []
 ) -> Dictionary:
 	var distances: Dictionary = {origin: 0}
 	var previous: Dictionary = {}
@@ -99,14 +105,18 @@ func get_reachable_cells(
 		if distances[current] >= movement_range:
 			continue
 
+		
 		for direction in DIRECTIONS:
 			var next := current + direction
 
-			if not is_cell_in_bounds(next):
+			if not is_cell_walkable(next):
 				continue
 
-			if next in occupied_cells:
+			# Friendly units can be passed through.
+			# Enemy units block movement.
+			if next in occupied_cells and next not in friendly_cells:
 				continue
+
 
 			if distances.has(next):
 				continue
@@ -194,3 +204,44 @@ func reconstruct_path(
 		current = previous[current]
 
 	return path
+
+func is_cell_walkable(cell: Vector2i) -> bool:
+	return is_cell_in_bounds(cell) and not blocked_cells.has(cell)
+	
+	
+
+
+func get_path_distance(
+	start: Vector2i,
+	destination: Vector2i
+) -> int:
+	if not is_cell_walkable(start):
+		return -1
+
+	if not is_cell_walkable(destination):
+		return -1
+
+	var distances: Dictionary = {start: 0}
+	var queue: Array[Vector2i] = [start]
+	var index := 0
+
+	while index < queue.size():
+		var current := queue[index]
+		index += 1
+
+		if current == destination:
+			return distances[current]
+
+		for direction in DIRECTIONS:
+			var next := current + direction
+
+			if not is_cell_walkable(next):
+				continue
+
+			if distances.has(next):
+				continue
+
+			distances[next] = distances[current] + 1
+			queue.append(next)
+
+	return -1

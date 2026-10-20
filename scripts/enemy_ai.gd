@@ -10,8 +10,9 @@ const HIT_WEIGHT: float = 0.1
 func choose_action(
 	enemy: Unit,
 	player_units: Array[Unit],
-	grid: Node,
-	occupied_cells: Array[Vector2i]
+	grid: BattlefieldGrid,
+	occupied_cells: Array[Vector2i],
+	friendly_cells: Array[Vector2i] = []
 ) -> Dictionary:
 	if enemy == null or enemy.current_hp <= 0:
 		return {}
@@ -29,7 +30,8 @@ func choose_action(
 	var movement: Dictionary = grid.get_reachable_cells(
 		enemy.grid_position,
 		enemy.movement_range,
-		occupied_cells
+		occupied_cells,
+		friendly_cells
 	)
 
 	var distances: Dictionary = movement["distances"]
@@ -75,8 +77,9 @@ func choose_action(
 			"target": best_target
 		}
 
+	
 	# No attack is possible this turn.
-	# Move toward the nearest player instead.
+	# Move toward the nearest player using terrain-aware distances.
 	var best_move_cell: Vector2i = enemy.grid_position
 	var best_move_score: float = INF
 
@@ -89,15 +92,23 @@ func choose_action(
 		var nearest_distance: int = 999999
 
 		for player in living_players:
-			var distance: int = manhattan_distance(
+			# The player's occupied tile is still walkable terrain.
+			# This calculation ignores units but respects obstacles.
+			var distance: int = grid.get_path_distance(
 				destination,
 				player.grid_position
 			)
+
+			if distance == -1:
+				continue
 
 			nearest_distance = mini(
 				nearest_distance,
 				distance
 			)
+
+		if nearest_distance == 999999:
+			continue
 
 		var move_score: float = float(nearest_distance)
 

@@ -1,6 +1,0 @@
-[gd_scene format=3 uid="uid://syx22yggeyks"]
-
-[ext_resource type="Script" uid="uid://q0rsabj1bjyn" path="res://tests/test_victory_progression.gd" id="1_widiy"]
-
-[node name="TestVictoryProgression" type="Node" unique_id=2020833803]
-script = ExtResource("1_widiy")

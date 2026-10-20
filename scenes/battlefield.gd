@@ -16,7 +16,7 @@ const DEFAULT_ENCOUNTERS: EncounterCollection = preload(
 	"res://resources/encounters/default_encounters.tres"
 )
 
-@onready var grid = $Grid
+var grid: BattlefieldGrid = null
 @onready var turn_system: BattleTurnSystem = $BattleTurnSystem
 @onready var enemy_ai: EnemyAI = $EnemyAI
 
@@ -119,7 +119,6 @@ func _deploy_run_army() -> void:
 
 
 func _ready() -> void:
-	grid.cell_selected.connect(_on_cell_selected)
 	turn_system.phase_changed.connect(_on_phase_changed)
 
 	action_menu.attack_selected.connect(_on_attack_selected)
@@ -142,14 +141,26 @@ func _ready() -> void:
 	weapon_menu_buttons.add_theme_constant_override("separation", 10)
 	weapon_menu.add_child(weapon_menu_buttons)
 
+	
 	active_run = RunManager.get_active_run()
+
+	var encounter := _load_current_encounter()
+
+	if encounter == null:
+		return
+
+	if not _load_encounter_map(encounter):
+		return
+
+	grid.cell_selected.connect(_on_cell_selected)
 
 	_deploy_run_army()
 
-	if not _deploy_encounter_enemies():
+	if not _deploy_encounter_enemies(encounter):
 		return
 
 	turn_system.initialize(get_all_units())
+
 
 
 
@@ -489,6 +500,19 @@ func get_occupied_cells(excluded_unit: Unit) -> Array[Vector2i]:
 	return occupied
 
 
+
+func get_friendly_cells(unit: Unit) -> Array[Vector2i]:
+	var friendly: Array[Vector2i] = []
+
+	for other in get_all_units():
+		if other != unit and other.current_hp > 0:
+			if other.team == unit.team:
+				friendly.append(other.grid_position)
+
+	return friendly
+
+
+
 func get_attack_targets(unit: Unit) -> Array[Unit]:
 	var targets: Array[Unit] = []
 
@@ -510,13 +534,17 @@ func select_unit(unit: Unit) -> void:
 
 	interaction_state = InteractionState.UNIT_SELECTED
 
+	
 	var occupied := get_occupied_cells(unit)
+	var friendly := get_friendly_cells(unit)
 
 	var result: Dictionary = grid.get_reachable_cells(
 		unit.grid_position,
 		unit.movement_range,
-		occupied
+		occupied,
+		friendly
 	)
+
 
 	current_paths = result["previous"]
 
@@ -528,9 +556,11 @@ func select_unit(unit: Unit) -> void:
 	grid.selected_cell = unit.grid_position
 	grid.highlighted_cells.clear()
 
+
 	for cell in movement_cells:
-		if cell != unit.grid_position:
+		if cell != unit.grid_position and cell not in occupied:
 			grid.highlighted_cells.append(cell)
+
 
 	grid.attack_cells.clear()
 
@@ -943,16 +973,18 @@ func run_enemy_phase() -> void:
 		if players.is_empty():
 			break
 
-		var occupied: Array[Vector2i] = (
-			get_occupied_cells(enemy)
-		)
+		
+		var occupied: Array[Vector2i] = get_occupied_cells(enemy)
+		var friendly: Array[Vector2i] = get_friendly_cells(enemy)
 
 		var action: Dictionary = enemy_ai.choose_action(
 			enemy,
 			players,
 			grid,
-			occupied
+			occupied,
+			friendly
 		)
+
 
 		if action.is_empty():
 			turn_system.mark_unit_acted(enemy)
@@ -1100,11 +1132,10 @@ func _on_finish_run_pressed() -> void:
 
 
 
-func _deploy_encounter_enemies() -> bool:
-	var encounter := _load_current_encounter()
 
-	if encounter == null:
-		push_error("Cannot initialize battlefield without a valid encounter")
+func _deploy_encounter_enemies(encounter: EncounterResource) -> bool:
+	if encounter == null or not encounter.is_valid():
+		push_error("Cannot deploy enemies from an invalid encounter")
 		return false
 
 	var enemies := EnemyDeployment.create_encounter_units(encounter)
@@ -1115,6 +1146,7 @@ func _deploy_encounter_enemies() -> bool:
 	print("DEPLOYED ENCOUNTER ENEMIES: ", enemies.size())
 
 	return true
+
 	
 
 func _load_current_encounter() -> EncounterResource:
@@ -1149,3 +1181,33 @@ func _load_current_encounter() -> EncounterResource:
 	print("LOADED ENCOUNTER: ", encounter_number)
 
 	return encounter
+
+
+
+
+func _load_encounter_map(encounter: EncounterResource) -> bool:
+	if encounter == null or encounter.battlefield_scene == null:
+		push_error("Encounter has no battlefield map")
+		return false
+
+	var map_instance := encounter.battlefield_scene.instantiate()
+
+	if not map_instance is BattlefieldGrid:
+		push_error("Battlefield map must have a BattlefieldGrid root")
+		map_instance.free()
+		return false
+
+	# Remove a previously loaded map, if one exists.
+	if is_instance_valid(grid):
+		remove_child(grid)
+		grid.queue_free()
+
+	map_instance.name = "Grid"
+	add_child(map_instance)
+	move_child(map_instance, 0)
+
+	grid = map_instance as BattlefieldGrid
+
+	print("LOADED BATTLEFIELD MAP: ", encounter.encounter_number)
+
+	return true
