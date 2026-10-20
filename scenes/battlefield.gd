@@ -45,6 +45,8 @@ signal encounter_victory
 var terrain_effect_popup: TerrainEffectPopup
 var victory_triggered: bool = false
 
+var terrain_info_panel: TerrainInfoPanel
+
 signal encounter_defeat
 
 var defeat_triggered: bool = false
@@ -154,6 +156,12 @@ func _ready() -> void:
 	terrain_effect_popup = TerrainEffectPopup.new()
 	$CanvasLayer.add_child(terrain_effect_popup)
 
+	terrain_info_panel = TerrainInfoPanel.new()
+	$CanvasLayer.add_child(terrain_info_panel)
+	terrain_info_panel.position = Vector2(12, 12)
+	terrain_info_panel.hide()
+
+	
 	active_run = RunManager.get_active_run()
 
 	var encounter := _load_current_encounter()
@@ -165,6 +173,7 @@ func _ready() -> void:
 		return
 
 	battle_overlay.battlefield_grid = grid
+	unit_status_screen.battlefield_grid = grid
 
 	grid.cell_selected.connect(_on_cell_selected)
 
@@ -399,15 +408,28 @@ func _on_weapon_popup_input(event: InputEvent) -> void:
 		open_action_menu()
 
 
+
+
 func _input(event: InputEvent) -> void:
-	# UI controls can consume right-clicks before _unhandled_input().
 	if not event is InputEventMouseButton:
 		return
-	if not event.pressed or event.button_index != MOUSE_BUTTON_RIGHT:
+
+	if not event.pressed:
 		return
-	if unit_status_screen.visible:
-		unit_status_screen.close_screen()
-		get_viewport().set_input_as_handled()
+
+	# Either mouse button closes the terrain information panel.
+	if terrain_info_panel.visible:
+		if event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+			terrain_info_panel.hide()
+			get_viewport().set_input_as_handled()
+		return
+
+	# Right-click closes the unit status screen.
+	if event.button_index == MOUSE_BUTTON_RIGHT:
+		if unit_status_screen.visible:
+			unit_status_screen.close_screen()
+			get_viewport().set_input_as_handled()
+
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -418,6 +440,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event.button_index != MOUSE_BUTTON_RIGHT:
+		return
+
+	# Close an existing information panel.
+	if terrain_info_panel.visible:
+		terrain_info_panel.hide()
+		get_viewport().set_input_as_handled()
 		return
 
 	if unit_status_screen.visible:
@@ -437,39 +465,37 @@ func _unhandled_input(event: InputEvent) -> void:
 	if turn_system.current_team != Unit.Team.PLAYER:
 		return
 
-	if interaction_state == InteractionState.UNIT_MOVING:
+	if interaction_state in [
+		InteractionState.UNIT_MOVING,
+		InteractionState.COMBAT_FORECAST,
+		InteractionState.CHOOSING_WEAPON,
+		InteractionState.COMBAT_RESOLVING
+	]:
 		return
 
-	if interaction_state == InteractionState.COMBAT_FORECAST:
-		return
-
-	if interaction_state == InteractionState.CHOOSING_WEAPON:
-		return
-
-	if interaction_state == InteractionState.COMBAT_RESOLVING:
-		return
-
-	var mouse_position: Vector2 = (
-		grid.get_global_mouse_position()
-	)
-
-	var local_position: Vector2 = (
-		grid.to_local(mouse_position)
-	)
-
-	var cell_size: int = 32
+	var mouse_position: Vector2 = grid.get_global_mouse_position()
+	var local_position: Vector2 = grid.to_local(mouse_position)
 
 	var cell := Vector2i(
-		floori(local_position.x / cell_size),
-		floori(local_position.y / cell_size)
+		floori(local_position.x / grid.CELL_SIZE),
+		floori(local_position.y / grid.CELL_SIZE)
 	)
 
+	if not grid.is_cell_in_bounds(cell):
+		return
+
+	# Units take priority over terrain inspection.
 	var unit: Unit = get_unit_at(cell)
 
 	if unit != null:
 		unit_status_screen.show_unit(unit)
-		get_viewport().set_input_as_handled()
+	else:
+		var terrain: TerrainResource = grid.get_terrain_at(cell)
+		var is_blocked: bool = cell in grid.blocked_cells
 
+		terrain_info_panel.show_terrain(terrain, is_blocked)
+
+	get_viewport().set_input_as_handled()
 
 func _on_cell_selected(cell: Vector2i) -> void:
 	if unit_status_screen.visible:

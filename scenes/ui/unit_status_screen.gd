@@ -29,6 +29,8 @@ const WEAPON_TYPES: Array[WeaponResource.WeaponType] = [
 var inspected_unit: Unit = null
 var current_page: int = PAGE_STATS
 
+var battlefield_grid: BattlefieldGrid = null
+
 var background: ColorRect
 var main_panel: PanelContainer
 var portrait_style: StyleBoxFlat
@@ -320,13 +322,13 @@ func refresh_page() -> void:
 			build_proficiencies_page()
 
 
+
 func build_stats_page() -> void:
-	var stats: UnitStatsResource = inspected_unit.stats
+	var stats: UnitStatsResource = inspected_unit.unit_data.stats
 	var unit_class: UnitClassResource = (
 		inspected_unit.unit_data.unit_class
 	)
-	stats = inspected_unit.unit_data.stats
-	
+
 	var stat_grid := create_stat_grid(page_content)
 
 	add_stat(stat_grid, "STR", str(stats.strength))
@@ -344,20 +346,75 @@ func build_stats_page() -> void:
 
 	if weapon == null:
 		add_text(page_content, "Equipped: None")
+	else:
+		var attack: int = inspected_unit.stats.strength + weapon.might
+		var attack_speed: int = (
+			CombatCalculator.get_attack_speed(inspected_unit)
+		)
+
+		add_text(page_content, "Equipped: " + weapon.weapon_name)
+		add_text(
+			page_content,
+			"ATK " + str(attack) + "  ·  AS " + str(attack_speed),
+			13,
+			true
+		)
+
+	add_separator(page_content)
+	build_terrain_section()
+
+
+
+func build_terrain_section() -> void:
+	var terrain: TerrainResource = get_inspected_unit_terrain()
+
+	add_text(page_content, "TERRAIN", 15)
+
+	if terrain == null:
+		add_text(
+			page_content,
+			"Plains  ·  DEF +0  ·  AVO +0",
+			13
+		)
 		return
 
-	var attack: int = inspected_unit.stats.strength + weapon.might
-	var attack_speed: int = (
-		CombatCalculator.get_attack_speed(inspected_unit)
-	)
+	var terrain_name: String = (
+		TerrainResource.TerrainType.keys()[terrain.terrain_type]
+	).capitalize()
 
-	add_text(page_content, "Equipped: " + weapon.weapon_name)
 	add_text(
 		page_content,
-		"ATK " + str(attack) + "  ·  AS " + str(attack_speed),
-		13,
-		true
+		terrain_name
+		+ "  ·  DEF +" + str(terrain.defense_bonus)
+		+ "  ·  AVO +" + str(terrain.avoid_bonus),
+		13
 	)
+
+	var effects: Array[String] = []
+
+	if terrain.turn_start_heal_percent > 0.0:
+		effects.append(
+			"Heals %d%% HP each turn" %
+			roundi(terrain.turn_start_heal_percent * 100.0)
+		)
+
+	if terrain.damage_on_enter > 0:
+		effects.append(
+			"%d damage on entry" % terrain.damage_on_enter
+		)
+
+	if terrain.damage_on_turn_start > 0:
+		effects.append(
+			"%d damage each turn" % terrain.damage_on_turn_start
+		)
+
+	if not effects.is_empty():
+		add_text(
+			page_content,
+			"  ·  ".join(effects),
+			12,
+			true
+		)
 
 
 func build_equipment_page() -> void:
@@ -629,3 +686,16 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_RIGHT:
 			next_page()
 			get_viewport().set_input_as_handled()
+			
+			
+
+func get_inspected_unit_terrain() -> TerrainResource:
+	if not is_instance_valid(inspected_unit):
+		return null
+
+	if battlefield_grid == null:
+		return null
+
+	return battlefield_grid.get_terrain_at(
+		inspected_unit.grid_position
+	)

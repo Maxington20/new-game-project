@@ -27,8 +27,6 @@ var selected_cell: Vector2i = Vector2i(-1, -1)
 var highlighted_cells: Array[Vector2i] = []
 var attack_cells: Array[Vector2i] = []
 
-
-
 func _draw() -> void:
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
