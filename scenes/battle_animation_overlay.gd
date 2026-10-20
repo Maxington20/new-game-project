@@ -848,6 +848,7 @@ func setup_terrain_scenery() -> void:
 	background.add_child(terrain_scenery)
 
 
+
 func update_terrain_scenery() -> void:
 	for child in terrain_scenery.get_children():
 		child.queue_free()
@@ -866,12 +867,26 @@ func update_terrain_scenery() -> void:
 	)
 
 	if enemy_terrain != null:
-		if enemy_terrain.terrain_type == TerrainResource.TerrainType.FOREST:
-			add_forest_scenery(Vector2(half_width * 0.5, size.y * 0.52))
+		match enemy_terrain.terrain_type:
+			TerrainResource.TerrainType.FOREST:
+				add_forest_scenery(Vector2(half_width * 0.5, size.y * 0.52))
+
+			TerrainResource.TerrainType.FORT:
+				add_fort_scenery(0.0, half_width)
+
+			TerrainResource.TerrainType.LAVA:
+				add_lava_scenery(0.0, half_width)
 
 	if player_terrain != null:
-		if player_terrain.terrain_type == TerrainResource.TerrainType.FOREST:
-			add_forest_scenery(Vector2(half_width * 1.5, size.y * 0.52))
+		match player_terrain.terrain_type:
+			TerrainResource.TerrainType.FOREST:
+				add_forest_scenery(Vector2(half_width * 1.5, size.y * 0.52))
+
+			TerrainResource.TerrainType.FORT:
+				add_fort_scenery(half_width, half_width)
+
+			TerrainResource.TerrainType.LAVA:
+				add_lava_scenery(half_width, half_width)
 
 
 
@@ -916,3 +931,103 @@ func add_forest_scenery(center: Vector2) -> void:
 		trunk.position = Vector2(12, tree_height - 25.0)
 		trunk.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tree.add_child(trunk)
+
+
+
+func add_fort_scenery(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+	var wall_height: float = 125.0
+	var wall_top: float = ground_y - wall_height
+
+	# Main stone wall.
+	var wall := ColorRect.new()
+	wall.color = Color("#4c5865")
+	wall.position = Vector2(start_x, wall_top)
+	wall.size = Vector2(section_width, wall_height)
+	wall.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	terrain_scenery.add_child(wall)
+
+	# Stone blocks along the top of the wall.
+	var block_width: float = 42.0
+	var block_gap: float = 22.0
+	var block_count: int = floori(section_width / (block_width + block_gap))
+
+	for i in range(block_count):
+		var battlement := ColorRect.new()
+		battlement.color = Color("#788797")
+		battlement.position = Vector2(
+			start_x + i * (block_width + block_gap) + 10.0,
+			wall_top - 24.0
+		)
+		battlement.size = Vector2(block_width, 24)
+		battlement.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		terrain_scenery.add_child(battlement)
+
+	# Horizontal mortar lines.
+	for row in range(1, 4):
+		var mortar := ColorRect.new()
+		mortar.color = Color("#35404c")
+		mortar.position = Vector2(
+			start_x,
+			wall_top + row * 30.0
+		)
+		mortar.size = Vector2(section_width, 3)
+		mortar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		terrain_scenery.add_child(mortar)
+
+
+
+func add_lava_scenery(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	# Dark volcanic mountains in the background.
+	var mountain_color := Color("#42383e")
+
+	for i in range(4):
+		var mountain := Polygon2D.new()
+
+		var mountain_x: float = start_x + section_width * (float(i) + 0.5) / 4.0
+		var mountain_width: float = section_width / 3.0
+		var mountain_height: float = 90.0 + float(i % 2) * 35.0
+
+		mountain.polygon = PackedVector2Array([
+			Vector2(mountain_x - mountain_width / 2.0, ground_y),
+			Vector2(mountain_x, ground_y - mountain_height),
+			Vector2(mountain_x + mountain_width / 2.0, ground_y)
+		])
+
+		mountain.color = mountain_color
+		terrain_scenery.add_child(mountain)
+
+	# Glowing lava pools along the ground.
+	var pool_positions: Array[float] = [0.12, 0.42, 0.75]
+
+	for fraction in pool_positions:
+		var pool := ColorRect.new()
+		pool.color = Color("#ff6b22")
+		pool.position = Vector2(
+			start_x + section_width * fraction,
+			ground_y + 18.0
+		)
+		pool.size = Vector2(75, 14)
+		pool.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		terrain_scenery.add_child(pool)
+
+		var glow := ColorRect.new()
+		glow.color = Color("#ffb347")
+		glow.position = Vector2(8, 3)
+		glow.size = Vector2(48, 5)
+		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pool.add_child(glow)
+
+	# Small volcanic rocks near the ground.
+	for i in range(5):
+		var rock := ColorRect.new()
+		rock.color = Color("#302c32")
+		rock.size = Vector2(20 + (i % 3) * 8, 12 + (i % 2) * 6)
+		rock.position = Vector2(
+			start_x + 25.0 + i * (section_width - 50.0) / 5.0,
+			ground_y - rock.size.y
+		)
+		rock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		terrain_scenery.add_child(rock)

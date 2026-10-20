@@ -64,8 +64,15 @@ func _draw() -> void:
 
 			# Draw terrain decorations.
 			if terrain != null and not blocked_cells.has(cell):
-				if terrain.terrain_type == TerrainResource.TerrainType.FOREST:
-					draw_forest_tile(rect.position)
+				match terrain.terrain_type:
+					TerrainResource.TerrainType.FOREST:
+						draw_forest_tile(rect.position)
+
+					TerrainResource.TerrainType.FORT:
+						draw_fort_tile(rect.position)
+
+					TerrainResource.TerrainType.LAVA:
+						draw_lava_tile(rect.position)
 
 			# Draw normal grid lines.
 			draw_rect(rect, color_lines, false, 1.0)
@@ -402,3 +409,138 @@ func get_movement_cost(cell: Vector2i) -> int:
 		return 1
 
 	return terrain.movement_cost
+	
+	
+
+
+func draw_fort_tile(tile_position: Vector2) -> void:
+	var stone_dark := Color("#354454")
+	var stone_mid := Color("#718498")
+	var stone_light := Color("#a1b0bf")
+	var gate_color := Color("#25303b")
+
+	# Castle foundation.
+	draw_rect(
+		Rect2(tile_position + Vector2(3, 13), Vector2(26, 17)),
+		stone_dark
+	)
+
+	# Main castle wall.
+	draw_rect(
+		Rect2(tile_position + Vector2(5, 15), Vector2(22, 13)),
+		stone_mid
+	)
+
+	# Left tower.
+	draw_rect(
+		Rect2(tile_position + Vector2(3, 7), Vector2(8, 21)),
+		stone_mid
+	)
+
+	# Right tower.
+	draw_rect(
+		Rect2(tile_position + Vector2(21, 7), Vector2(8, 21)),
+		stone_mid
+	)
+
+	# Tower battlements.
+	for x in [2, 7, 21, 26]:
+		draw_rect(
+			Rect2(tile_position + Vector2(x, 4), Vector2(5, 5)),
+			stone_light
+		)
+
+	# Central wall battlements.
+	for x in [12, 17]:
+		draw_rect(
+			Rect2(tile_position + Vector2(x, 11), Vector2(4, 5)),
+			stone_light
+		)
+
+	# Castle gate.
+	draw_rect(
+		Rect2(tile_position + Vector2(13, 21), Vector2(6, 9)),
+		gate_color
+	)
+
+	# Gate arch.
+	draw_rect(
+		Rect2(tile_position + Vector2(14, 19), Vector2(4, 3)),
+		gate_color
+	)
+
+	# Small tower windows.
+	draw_rect(
+		Rect2(tile_position + Vector2(6, 13), Vector2(2, 4)),
+		gate_color
+	)
+
+	draw_rect(
+		Rect2(tile_position + Vector2(24, 13), Vector2(2, 4)),
+		gate_color
+	)
+
+
+
+func draw_lava_tile(tile_position: Vector2) -> void:
+	var lava_dark := Color("#b83d1c")
+	var lava_bright := Color("#ffb52e")
+	var lava_hot := Color("#ffe27a")
+
+	# Subtle darker currents within the molten surface.
+	draw_rect(
+		Rect2(tile_position + Vector2(3, 5), Vector2(9, 3)),
+		lava_dark
+	)
+
+	draw_rect(
+		Rect2(tile_position + Vector2(20, 25), Vector2(8, 3)),
+		lava_dark
+	)
+
+	# Main flowing lava channel.
+	var main_flow := PackedVector2Array([
+		tile_position + Vector2(0, 20),
+		tile_position + Vector2(6, 17),
+		tile_position + Vector2(12, 21),
+		tile_position + Vector2(19, 14),
+		tile_position + Vector2(25, 16),
+		tile_position + Vector2(32, 10)
+	])
+
+	draw_polyline(main_flow, lava_bright, 4.0, false)
+
+	# Bright inner highlights.
+	var hot_flow := PackedVector2Array([
+		tile_position + Vector2(6, 17),
+		tile_position + Vector2(12, 21),
+		tile_position + Vector2(19, 14)
+	])
+
+	draw_polyline(hot_flow, lava_hot, 2.0, false)
+
+	# Smaller branching streams.
+	draw_line(
+		tile_position + Vector2(12, 21),
+		tile_position + Vector2(10, 29),
+		lava_bright,
+		2.0
+	)
+
+	draw_line(
+		tile_position + Vector2(25, 16),
+		tile_position + Vector2(28, 24),
+		lava_bright,
+		2.0
+	)
+
+	# Small molten highlights.
+	draw_rect(
+		Rect2(tile_position + Vector2(4, 11), Vector2(4, 2)),
+		lava_hot
+	)
+
+	draw_rect(
+		Rect2(tile_position + Vector2(23, 5), Vector2(5, 2)),
+		lava_hot
+	)
