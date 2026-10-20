@@ -21,17 +21,26 @@ func _ready() -> void:
 	cancel_button.pressed.connect(func(): cancel_selected.emit())
 	hide()
 
-func open_menu(screen_position: Vector2, can_attack: bool) -> void:
+
+func open_menu(
+	screen_position: Vector2,
+	can_attack: bool,
+	can_cancel: bool = true
+) -> void:
 	attack_button.visible = can_attack
+	cancel_button.visible = can_cancel
+
 	custom_minimum_size = Vector2.ZERO
 	size = Vector2.ZERO
 	position = screen_position
 	show()
 	reset_size.call_deferred()
+
 	if can_attack:
 		attack_button.grab_focus()
 	else:
 		wait_button.grab_focus()
+
 
 func close_menu() -> void:
 	hide()

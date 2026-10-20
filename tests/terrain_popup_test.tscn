@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://c4bt0mkowjrc3"]
+
+[ext_resource type="Script" uid="uid://d01lif43ccfp8" path="res://tests/terrain_popup_test.gd" id="1_nnklu"]
+
+[node name="TerrainPopupTest" type="Control" unique_id=639805685]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_nnklu")

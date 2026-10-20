@@ -51,16 +51,43 @@ static func get_hit_rate(unit: Unit) -> int:
 		return 0
 	return unit.equipped_weapon.hit + 2 * unit.stats.skill + floori(unit.stats.luck / 2.0)
 
-static func get_avoid(unit: Unit) -> int:
+
+static func get_avoid(
+	unit: Unit,
+	terrain_avoid_bonus: int = 0
+) -> int:
 	if unit.stats == null:
 		return 0
-	return 2 * get_attack_speed(unit) + unit.stats.luck
 
-static func get_displayed_hit(attacker: Unit, defender: Unit) -> int:
+	return (
+		2 * get_attack_speed(unit)
+		+ unit.stats.luck
+		+ terrain_avoid_bonus
+	)
+
+
+
+static func get_displayed_hit(
+	attacker: Unit,
+	defender: Unit,
+	terrain_avoid_bonus: int = 0
+) -> int:
 	if not can_attack(attacker, defender):
 		return 0
-	var triangle: int = get_weapon_triangle_advantage(attacker, defender)
-	return clampi(get_hit_rate(attacker) + triangle * TRIANGLE_HIT_BONUS - get_avoid(defender), 0, 100)
+
+	var triangle: int = get_weapon_triangle_advantage(
+		attacker,
+		defender
+	)
+
+	return clampi(
+		get_hit_rate(attacker)
+		+ triangle * TRIANGLE_HIT_BONUS
+		- get_avoid(defender, terrain_avoid_bonus),
+		0,
+		100
+	)
+
 
 static func get_critical_rate(unit: Unit) -> int:
 	if unit.equipped_weapon == null or unit.stats == null:
@@ -72,12 +99,33 @@ static func get_displayed_critical(attacker: Unit, defender: Unit) -> int:
 		return 0
 	return clampi(get_critical_rate(attacker) - defender.stats.luck, 0, 100)
 
-static func calculate_damage(attacker: Unit, defender: Unit) -> int:
+
+static func calculate_damage(
+	attacker: Unit,
+	defender: Unit,
+	terrain_defense_bonus: int = 0
+) -> int:
 	if not can_attack(attacker, defender):
 		return 0
-	var triangle: int = get_weapon_triangle_advantage(attacker, defender)
-	var attack_power: int = attacker.stats.strength + attacker.equipped_weapon.might + triangle * TRIANGLE_DAMAGE_BONUS
-	return maxi(0, attack_power - defender.stats.defense)
+
+	var triangle: int = get_weapon_triangle_advantage(
+		attacker,
+		defender
+	)
+
+	var attack_power: int = (
+		attacker.stats.strength
+		+ attacker.equipped_weapon.might
+		+ triangle * TRIANGLE_DAMAGE_BONUS
+	)
+
+	return maxi(
+		0,
+		attack_power
+		- defender.stats.defense
+		- terrain_defense_bonus
+	)
+
 
 static func can_counterattack(defender: Unit, attacker: Unit) -> bool:
 	return can_attack(defender, attacker)
@@ -93,16 +141,62 @@ static func roll_hit(displayed_hit: int) -> bool:
 static func roll_critical(displayed_critical: int) -> bool:
 	return randi_range(0, 99) < displayed_critical
 
-static func resolve_strike(attacker: Unit, defender: Unit) -> Dictionary:
+
+static func resolve_strike(
+	attacker: Unit,
+	defender: Unit,
+	defender_terrain: TerrainResource = null
+) -> Dictionary:
 	if not can_attack(attacker, defender):
-		return {"valid": false, "hit": false, "critical": false, "damage": 0}
-	var hit_chance: int = get_displayed_hit(attacker, defender)
+		return {
+			"valid": false,
+			"hit": false,
+			"critical": false,
+			"damage": 0
+		}
+
+	var defense_bonus := 0
+	var avoid_bonus := 0
+
+	if defender_terrain != null:
+		defense_bonus = defender_terrain.defense_bonus
+		avoid_bonus = defender_terrain.avoid_bonus
+
+	var hit_chance: int = get_displayed_hit(
+		attacker,
+		defender,
+		avoid_bonus
+	)
+
 	var did_hit: bool = roll_hit(hit_chance)
+
 	if not did_hit:
-		return {"valid": true, "hit": false, "critical": false, "damage": 0}
-	var critical_chance: int = get_displayed_critical(attacker, defender)
+		return {
+			"valid": true,
+			"hit": false,
+			"critical": false,
+			"damage": 0
+		}
+
+	var critical_chance: int = get_displayed_critical(
+		attacker,
+		defender
+	)
+
 	var did_critical: bool = roll_critical(critical_chance)
-	var damage: int = calculate_damage(attacker, defender)
+
+	var damage: int = calculate_damage(
+		attacker,
+		defender,
+		defense_bonus
+	)
+
 	if did_critical:
 		damage *= 3
-	return {"valid": true, "hit": true, "critical": did_critical, "damage": damage}
+
+	return {
+		"valid": true,
+		"hit": true,
+		"critical": did_critical,
+		"damage": damage
+	}

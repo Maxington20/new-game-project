@@ -2,6 +2,8 @@ class_name Unit
 extends Node2D
 
 signal movement_finished
+signal terrain_cell_entered(unit: Unit, cell: Vector2i)
+signal terrain_effect_finished
 
 enum Team {
 	PLAYER,
@@ -40,6 +42,7 @@ var current_hp: int = 0:
 			
 var is_moving: bool = false
 var has_acted: bool = false
+var took_terrain_damage: bool = false
 var run_state: RunUnitState
 
 var stats: UnitStatsResource:
@@ -165,22 +168,46 @@ func get_class_letter() -> String:
 		"fighter": return "F"
 		_: return "?"
 
+
 func move_along_path(path: Array[Vector2i]) -> void:
 	if is_moving:
 		return
+
 	if path.is_empty():
 		movement_finished.emit()
 		return
+
 	is_moving = true
+
 	for cell in path:
+		if current_hp <= 0:
+			break
+
 		var target_position := Vector2(cell * CELL_SIZE)
 		var duration := position.distance_to(target_position) / movement_speed
+
 		var tween := create_tween()
-		tween.tween_property(self, "position", target_position, duration)
+		tween.tween_property(
+			self,
+			"position",
+			target_position,
+			duration
+		)
+
 		await tween.finished
+
 		grid_position = cell
+
+		if terrain_cell_entered.has_connections():
+			terrain_cell_entered.emit(self, cell)
+			await terrain_effect_finished
+
+		if current_hp <= 0:
+			break
+
 	is_moving = false
 	movement_finished.emit()
+
 	
 	
 

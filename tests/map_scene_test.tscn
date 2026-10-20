@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://doksicrx86xnq"]
+
+[sub_resource type="GDScript" id="GDScript_8vir2"]
+script/source = "
+extends Node
+
+
+func _ready() -> void:
+	print(\"=== BATTLEFIELD MAP RESOURCE TEST ===\")
+
+	var encounter: EncounterResource = load(
+		\"res://resources/encounters/encounter_01.tres\"
+	)
+
+	print(\"Encounter valid: \", encounter.is_valid())
+	print(\"Has battlefield scene: \", encounter.battlefield_scene != null)
+
+	var map_instance := encounter.battlefield_scene.instantiate()
+
+	print(\"Map instance type: \", map_instance.get_class())
+	print(\"Map instance name: \", map_instance.name)
+
+	map_instance.free()
+
+	print(\"=== TEST COMPLETE ===\")
+"
+
+[node name="MapSceneTest" type="Node" unique_id=1364748801]
+script = SubResource("GDScript_8vir2")

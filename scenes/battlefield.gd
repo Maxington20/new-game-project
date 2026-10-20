@@ -42,6 +42,7 @@ var grid: BattlefieldGrid = null
 
 signal encounter_victory
 
+var terrain_effect_popup: TerrainEffectPopup
 var victory_triggered: bool = false
 
 signal encounter_defeat
@@ -118,30 +119,41 @@ func _deploy_run_army() -> void:
 		)
 
 
+
 func _ready() -> void:
 	turn_system.phase_changed.connect(_on_phase_changed)
 
 	action_menu.attack_selected.connect(_on_attack_selected)
 	action_menu.wait_selected.connect(_on_wait_selected)
 	action_menu.cancel_selected.connect(_on_cancel_selected)
+
 	encounter_victory.connect(_on_encounter_victory)
 	encounter_defeat.connect(_on_encounter_defeat)
-	
+
 	combat_dialog.hide()
 	_build_forecast_overlay()
 
 	weapon_menu = PopupPanel.new()
 	weapon_menu.name = "WeaponSelectionMenu"
-	weapon_menu.add_theme_stylebox_override("panel", GameUIStyle.make_panel_style())
+	weapon_menu.add_theme_stylebox_override(
+		"panel",
+		GameUIStyle.make_panel_style()
+	)
 	$CanvasLayer.add_child(weapon_menu)
+
 	weapon_menu.popup_hide.connect(_on_weapon_menu_hidden)
 	weapon_menu.window_input.connect(_on_weapon_popup_input)
 
 	weapon_menu_buttons = VBoxContainer.new()
-	weapon_menu_buttons.add_theme_constant_override("separation", 10)
+	weapon_menu_buttons.add_theme_constant_override(
+		"separation",
+		10
+	)
 	weapon_menu.add_child(weapon_menu_buttons)
 
-	
+	terrain_effect_popup = TerrainEffectPopup.new()
+	$CanvasLayer.add_child(terrain_effect_popup)
+
 	active_run = RunManager.get_active_run()
 
 	var encounter := _load_current_encounter()
@@ -152,6 +164,8 @@ func _ready() -> void:
 	if not _load_encounter_map(encounter):
 		return
 
+	battle_overlay.battlefield_grid = grid
+
 	grid.cell_selected.connect(_on_cell_selected)
 
 	_deploy_run_army()
@@ -159,8 +173,13 @@ func _ready() -> void:
 	if not _deploy_encounter_enemies(encounter):
 		return
 
-	turn_system.initialize(get_all_units())
+	# Connect terrain-entry events for both player and enemy units.
+	for unit in get_all_units():
+		unit.terrain_cell_entered.connect(
+			_on_unit_terrain_cell_entered
+		)
 
+	turn_system.initialize(get_all_units())
 
 
 
@@ -320,10 +339,32 @@ func _update_forecast_side(fields: Dictionary, unit: Unit, opponent: Unit) -> vo
 		return
 
 	var strikes: int = 2 if CombatCalculator.can_follow_up(unit, opponent) else 1
+
+	var opponent_terrain := get_unit_terrain(opponent)
+
+	var defense_bonus := 0
+	var avoid_bonus := 0
+
+	if opponent_terrain != null:
+		defense_bonus = opponent_terrain.defense_bonus
+		avoid_bonus = opponent_terrain.avoid_bonus
+
 	fields["Damage"].text = (
-		str(CombatCalculator.calculate_damage(unit, opponent)) + " x" + str(strikes)
+		str(CombatCalculator.calculate_damage(
+			unit,
+			opponent,
+			defense_bonus
+		)) + " x" + str(strikes)
 	)
-	fields["Hit"].text = str(CombatCalculator.get_displayed_hit(unit, opponent)) + "%"
+
+	fields["Hit"].text = (
+		str(CombatCalculator.get_displayed_hit(
+			unit,
+			opponent,
+			avoid_bonus
+		)) + "%"
+	)
+
 	fields["Crit"].text = str(CombatCalculator.get_displayed_critical(unit, opponent)) + "%"
 	fields["Atk Speed"].text = str(CombatCalculator.get_attack_speed(unit))
 
@@ -595,6 +636,7 @@ func deselect_unit() -> void:
 	grid.queue_redraw()
 
 
+
 func move_selected_unit(destination: Vector2i) -> void:
 	movement_path = grid.reconstruct_path(
 		selected_unit.grid_position,
@@ -612,8 +654,26 @@ func move_selected_unit(destination: Vector2i) -> void:
 	grid.attack_cells.clear()
 	grid.queue_redraw()
 
-	selected_unit.move_along_path(movement_path)
-	await selected_unit.movement_finished
+	var moving_unit: Unit = selected_unit
+	
+	moving_unit.took_terrain_damage = false
+
+	moving_unit.move_along_path(movement_path)
+	await moving_unit.movement_finished
+
+	# Terrain damage may have defeated the unit during movement.
+	if moving_unit.current_hp <= 0:
+		deselect_unit()
+
+		_check_encounter_defeat()
+
+		if defeat_triggered:
+			return
+
+		if turn_system.are_all_units_done():
+			turn_system.end_phase()
+
+		return
 
 	open_action_menu()
 
@@ -680,7 +740,8 @@ func open_action_menu() -> void:
 
 	action_menu.open_menu(
 		menu_position,
-		can_attack_now
+		can_attack_now,
+		not selected_unit.took_terrain_damage
 	)
 
 
@@ -921,8 +982,16 @@ func complete_unit_action() -> void:
 		turn_system.end_phase()
 
 
+
 func _on_cancel_selected() -> void:
 	if interaction_state != InteractionState.AWAITING_ACTION:
+		return
+
+	if selected_unit == null:
+		return
+
+	# Movement cannot be undone after taking terrain damage.
+	if selected_unit.took_terrain_damage:
 		return
 
 	action_menu.close_menu()
@@ -946,13 +1015,20 @@ func _on_cancel_selected() -> void:
 
 
 func _on_phase_changed(team: Unit.Team) -> void:
+	is_phase_transitioning = true
+
 	if team == Unit.Team.PLAYER:
 		phase_label.text = "Player Phase"
-		is_phase_transitioning = false
 	else:
 		phase_label.text = "Enemy Phase"
-		is_phase_transitioning = true
+
+	await apply_turn_start_terrain_effects(team)
+
+	if team == Unit.Team.PLAYER:
+		is_phase_transitioning = false
+	else:
 		run_enemy_phase()
+
 
 
 func run_enemy_phase() -> void:
@@ -973,7 +1049,6 @@ func run_enemy_phase() -> void:
 		if players.is_empty():
 			break
 
-		
 		var occupied: Array[Vector2i] = get_occupied_cells(enemy)
 		var friendly: Array[Vector2i] = get_friendly_cells(enemy)
 
@@ -985,7 +1060,6 @@ func run_enemy_phase() -> void:
 			friendly
 		)
 
-
 		if action.is_empty():
 			turn_system.mark_unit_acted(enemy)
 			continue
@@ -996,6 +1070,17 @@ func run_enemy_phase() -> void:
 		if not path.is_empty():
 			enemy.move_along_path(path)
 			await enemy.movement_finished
+
+		# Terrain damage may have defeated the enemy.
+		# Do not allow a defeated enemy to attack.
+		if enemy.current_hp <= 0:
+			_check_encounter_victory()
+
+			if victory_triggered:
+				is_phase_transitioning = false
+				return
+
+			continue
 
 		await get_tree().create_timer(0.25).timeout
 
@@ -1020,7 +1105,7 @@ func run_enemy_phase() -> void:
 			if victory_triggered:
 				is_phase_transitioning = false
 				return
-				
+
 			_check_encounter_defeat()
 
 			if defeat_triggered:
@@ -1033,7 +1118,7 @@ func run_enemy_phase() -> void:
 		await get_tree().create_timer(0.35).timeout
 
 	turn_system.end_phase()
-	
+
 	
 func _check_encounter_victory() -> void:
 	if victory_triggered:
@@ -1211,3 +1296,88 @@ func _load_encounter_map(encounter: EncounterResource) -> bool:
 	print("LOADED BATTLEFIELD MAP: ", encounter.encounter_number)
 
 	return true
+
+
+
+func get_unit_terrain(unit: Unit) -> TerrainResource:
+	if unit == null or grid == null:
+		return null
+
+	return grid.get_terrain_at(unit.grid_position)
+	
+
+
+
+func apply_turn_start_terrain_effects(team: Unit.Team) -> void:
+	for unit in get_living_units(team):
+		var terrain: TerrainResource = get_unit_terrain(unit)
+
+		if terrain == null:
+			continue
+
+		var healing: int = TerrainEffectCalculator.calculate_turn_start_healing(
+			unit.current_hp,
+			unit.stats.max_hp,
+			terrain
+		)
+
+		if healing <= 0:
+			continue
+
+		var previous_hp: int = unit.current_hp
+		unit.current_hp += healing
+
+		print(
+			"TERRAIN HEAL: ",
+			unit.unit_data.character_name,
+			" +", healing,
+			" HP (", unit.current_hp,
+			"/", unit.stats.max_hp, ")"
+		)
+
+		await terrain_effect_popup.show_healing(
+			unit.unit_data.character_name,
+			previous_hp,
+			unit.stats.max_hp,
+			healing
+		)
+
+
+
+func _on_unit_terrain_cell_entered(
+	unit: Unit,
+	cell: Vector2i
+) -> void:
+	var terrain: TerrainResource = grid.get_terrain_at(cell)
+
+	var damage: int = TerrainEffectCalculator.calculate_terrain_damage(
+		unit.current_hp,
+		terrain,
+		true
+	)
+
+	if damage > 0:
+		var previous_hp: int = unit.current_hp
+
+		unit.current_hp -= damage
+		unit.took_terrain_damage = true
+		print(
+			"TERRAIN DAMAGE: ",
+			unit.unit_data.character_name,
+			" -", damage,
+			" HP | Remaining: ",
+			unit.current_hp
+		)
+
+		await terrain_effect_popup.show_damage(
+			unit.unit_data.character_name,
+			previous_hp,
+			unit.stats.max_hp,
+			damage
+		)
+
+		if unit.current_hp <= 0:
+			unit.hide()
+
+	# Resume movement after terrain processing finishes.
+	unit.terrain_effect_finished.emit.call_deferred()

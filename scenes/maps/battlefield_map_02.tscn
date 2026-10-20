@@ -1,9 +1,62 @@
 [gd_scene format=3 uid="uid://d1tp26oumaovy"]
 
 [ext_resource type="Script" uid="uid://bdxk7p8jgwg8a" path="res://scenes/grid.gd" id="1_seacg"]
+[ext_resource type="Script" uid="uid://cuvxx7egx0eo" path="res://scripts/resources/terrain_cell_resource.gd" id="2_uots1"]
+[ext_resource type="Resource" uid="uid://iavasaifvytn" path="res://resources/terrain/forest.tres" id="3_phn8d"]
+[ext_resource type="Resource" uid="uid://bt7sr3wa5kjkn" path="res://resources/terrain/fort.tres" id="4_t04d4"]
+[ext_resource type="Resource" uid="uid://de8wkfsymeumt" path="res://resources/terrain/lava.tres" id="5_g4hnp"]
+
+[sub_resource type="Resource" id="Resource_b36bp"]
+script = ExtResource("2_uots1")
+position = Vector2i(5, 4)
+terrain = ExtResource("3_phn8d")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
+
+[sub_resource type="Resource" id="Resource_76r87"]
+script = ExtResource("2_uots1")
+position = Vector2i(5, 5)
+terrain = ExtResource("4_t04d4")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
+
+[sub_resource type="Resource" id="Resource_fcj5i"]
+script = ExtResource("2_uots1")
+position = Vector2i(9, 5)
+terrain = ExtResource("5_g4hnp")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
+
+[sub_resource type="Resource" id="Resource_muchm"]
+script = ExtResource("2_uots1")
+position = Vector2i(3, 3)
+terrain = ExtResource("5_g4hnp")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
+
+[sub_resource type="Resource" id="Resource_uots1"]
+script = ExtResource("2_uots1")
+position = Vector2i(11, 4)
+terrain = ExtResource("5_g4hnp")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
+
+[sub_resource type="Resource" id="Resource_rbam6"]
+script = ExtResource("2_uots1")
+position = Vector2i(11, 6)
+terrain = ExtResource("5_g4hnp")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
+
+[sub_resource type="Resource" id="Resource_5jfvs"]
+script = ExtResource("2_uots1")
+position = Vector2i(10, 5)
+terrain = ExtResource("5_g4hnp")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
+
+[sub_resource type="Resource" id="Resource_ocyk3"]
+script = ExtResource("2_uots1")
+position = Vector2i(12, 5)
+terrain = ExtResource("5_g4hnp")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
 
 [node name="Grid" type="Node2D" unique_id=1665304342]
 script = ExtResource("1_seacg")
+terrain_cells = Array[ExtResource("2_uots1")]([SubResource("Resource_b36bp"), SubResource("Resource_76r87"), SubResource("Resource_fcj5i"), SubResource("Resource_muchm"), SubResource("Resource_uots1"), SubResource("Resource_rbam6"), SubResource("Resource_5jfvs"), SubResource("Resource_ocyk3")])
 blocked_cells = Array[Vector2i]([Vector2i(7, 4), Vector2i(7, 5), Vector2i(7, 6), Vector2i(7, 7)])
 color_light = Color(0.72156864, 0.6431373, 0.5294118, 1)
 color_dark = Color(0.6392157, 0.54901963, 0.4392157, 1)

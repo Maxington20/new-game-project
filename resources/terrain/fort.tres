@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TerrainResource" format=3 uid="uid://bt7sr3wa5kjkn"]
+
+[ext_resource type="Script" uid="uid://gudx7v1d2qo1" path="res://scripts/resources/terrain_resource.gd" id="1_yxpso"]
+
+[resource]
+script = ExtResource("1_yxpso")
+terrain_type = 4
+defense_bonus = 2
+avoid_bonus = 20
+turn_start_heal_percent = 0.2
+metadata/_custom_type_script = "uid://gudx7v1d2qo1"

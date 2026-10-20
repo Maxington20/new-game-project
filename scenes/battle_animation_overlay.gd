@@ -34,6 +34,7 @@ const SPRITE_SIZE := Vector2(72, 96)
 const ATTACK_DISTANCE: float = 48.0
 const WEAPON_EXPERIENCE_PER_STRIKE: int = 1
 
+var battlefield_grid: BattlefieldGrid = null
 var player_unit: Unit = null
 var enemy_unit: Unit = null
 var is_playing: bool = false
@@ -664,10 +665,20 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 
 	await forward_tween.finished
 
+	
+	var defender_terrain: TerrainResource = null
+
+	if battlefield_grid != null:
+		defender_terrain = battlefield_grid.get_terrain_at(
+			defender.grid_position
+		)
+
 	var result: Dictionary = CombatCalculator.resolve_strike(
 		attacker,
-		defender
+		defender,
+		defender_terrain
 	)
+
 
 	if not result["valid"]:
 		# Restore the sprite if the strike becomes invalid mid-animation.

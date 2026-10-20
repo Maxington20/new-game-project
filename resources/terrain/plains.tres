@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="TerrainResource" format=3 uid="uid://cgv5dthis6p6v"]
+
+[ext_resource type="Script" uid="uid://gudx7v1d2qo1" path="res://scripts/resources/terrain_resource.gd" id="1_b3dxl"]
+
+[resource]
+script = ExtResource("1_b3dxl")
+metadata/_custom_type_script = "uid://gudx7v1d2qo1"
