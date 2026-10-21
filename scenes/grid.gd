@@ -18,12 +18,28 @@ const COLOR_SELECTED := Color("#e8d36a")
 const COLOR_MOVEMENT := Color("#6a9fe8")
 const COLOR_ATTACK := Color("#d96b6b")
 
+const DESERT_LIGHT := Color("#c9b38a")
+const DESERT_DARK := Color("#b7a077")
+const DESERT_LINES := Color("#8e7b5e")
+
+const SNOW_LIGHT := Color("#e1e9ed")
+const SNOW_DARK := Color("#cbd8df")
+const SNOW_LINES := Color("#a5b8c3")
+
 const DIRECTIONS: Array[Vector2i] = [
 	Vector2i.UP,
 	Vector2i.RIGHT,
 	Vector2i.DOWN,
 	Vector2i.LEFT
 ]
+
+enum Biome {
+	GRASSLAND,
+	DESERT,
+	SNOW
+}
+
+@export var biome: Biome = Biome.GRASSLAND
 
 var selected_cell: Vector2i = Vector2i(-1, -1)
 var highlighted_cells: Array[Vector2i] = []
@@ -40,11 +56,10 @@ func _draw() -> void:
 				Vector2(CELL_SIZE, CELL_SIZE)
 			)
 
-			# Base checkerboard colour.
-			var color := color_light
-
-			if (x + y) % 2 == 1:
-				color = color_dark
+			# Base ground colour depends on the map's biome.
+			var color: Color = get_biome_ground_color(cell)
+				
+			
 
 			# Special terrain.
 			var terrain := get_terrain_at(cell)
@@ -63,19 +78,38 @@ func _draw() -> void:
 			draw_rect(rect, color)
 
 			# Draw terrain decorations.
-			if terrain != null and not blocked_cells.has(cell):
-				match terrain.terrain_type:
-					TerrainResource.TerrainType.FOREST:
-						draw_forest_tile(rect.position)
+			if not blocked_cells.has(cell):
+				if terrain == null or terrain.terrain_type == TerrainResource.TerrainType.PLAINS:
+					match biome:
+						Biome.DESERT:
+							draw_desert_tile(cell, rect.position)
 
-					TerrainResource.TerrainType.FORT:
-						draw_fort_tile(rect.position)
+						Biome.GRASSLAND:
+							draw_plains_tile(cell, rect.position)
 
-					TerrainResource.TerrainType.LAVA:
-						draw_lava_tile(rect.position)
+						Biome.SNOW:
+							pass
+				else:
+					match terrain.terrain_type:
+						TerrainResource.TerrainType.FOREST:
+							draw_forest_tile(rect.position)
 
-			# Draw normal grid lines.
-			draw_rect(rect, color_lines, false, 1.0)
+						TerrainResource.TerrainType.FORT:
+							draw_fort_tile(rect.position)
+
+						TerrainResource.TerrainType.LAVA:
+							draw_lava_tile(rect.position)
+
+			# Draw grid lines appropriate for the biome.
+			var line_color: Color = color_lines
+
+			match biome:
+				Biome.DESERT:
+					line_color = DESERT_LINES
+				Biome.SNOW:
+					line_color = SNOW_LINES
+
+			draw_rect(rect, line_color, false, 1.0)
 
 			# Draw movement and attack borders.
 			if cell in highlighted_cells:
@@ -544,3 +578,174 @@ func draw_lava_tile(tile_position: Vector2) -> void:
 		Rect2(tile_position + Vector2(23, 5), Vector2(5, 2)),
 		lava_hot
 	)
+
+
+
+func draw_plains_tile(cell: Vector2i, tile_position: Vector2) -> void:
+	# A stable pseudo-random pattern based on cell coordinates.
+	# No actual RNG, so redraws always produce the same result.
+	var seed_value: int = absi(
+		cell.x * 73856093 ^ cell.y * 19349663
+	)
+
+	var variation: int = seed_value % 4
+	var grass_dark := Color("#527b47")
+	var grass_light := Color("#a5c394")
+	var flower_color := Color("#e8d78a")
+
+	match variation:
+		0:
+			# Two small grass tufts.
+			draw_line(
+				tile_position + Vector2(8, 22),
+				tile_position + Vector2(6, 17),
+				grass_dark,
+				1.0
+			)
+			draw_line(
+				tile_position + Vector2(8, 22),
+				tile_position + Vector2(10, 16),
+				grass_dark,
+				1.0
+			)
+			draw_line(
+				tile_position + Vector2(23, 12),
+				tile_position + Vector2(25, 8),
+				grass_light,
+				1.0
+			)
+
+		1:
+			# Scattered short blades.
+			for offset in [
+				Vector2(5, 9),
+				Vector2(19, 23),
+				Vector2(27, 14)
+			]:
+				draw_line(
+					tile_position + offset,
+					tile_position + offset + Vector2(-2, -4),
+					grass_dark,
+					1.0
+				)
+
+		2:
+			# A small tuft with a tiny flower.
+			draw_line(
+				tile_position + Vector2(11, 24),
+				tile_position + Vector2(9, 19),
+				grass_dark,
+				1.0
+			)
+			draw_line(
+				tile_position + Vector2(11, 24),
+				tile_position + Vector2(14, 20),
+				grass_dark,
+				1.0
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(23, 9), Vector2(2, 2)),
+				flower_color
+			)
+
+		3:
+			# Sparse ground details.
+			draw_rect(
+				Rect2(tile_position + Vector2(7, 14), Vector2(3, 1)),
+				grass_light
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(22, 25), Vector2(2, 1)),
+				grass_dark
+			)
+
+
+func get_biome_ground_color(cell: Vector2i) -> Color:
+	var is_light: bool = (cell.x + cell.y) % 2 == 0
+
+	match biome:
+		Biome.DESERT:
+			return DESERT_LIGHT if is_light else DESERT_DARK
+
+		Biome.SNOW:
+			return SNOW_LIGHT if is_light else SNOW_DARK
+
+		_:
+			return color_light if is_light else color_dark
+
+
+func draw_desert_tile(cell: Vector2i, tile_position: Vector2) -> void:
+	# Deterministic variation: each cell keeps its pattern on redraw.
+	var seed_value: int = absi(
+		cell.x * 73856093 ^ cell.y * 19349663
+	)
+
+	var variation: int = seed_value % 5
+
+	var sand_shadow := Color("#a58d65")
+	var sand_highlight := Color("#dfc99d")
+	var rock_color := Color("#887b69")
+
+	match variation:
+		0:
+			# Short wind-swept sand lines.
+			draw_line(
+				tile_position + Vector2(5, 11),
+				tile_position + Vector2(13, 11),
+				sand_shadow,
+				1.0
+			)
+			draw_line(
+				tile_position + Vector2(18, 23),
+				tile_position + Vector2(27, 23),
+				sand_highlight,
+				1.0
+			)
+
+		1:
+			# A few small stones.
+			draw_rect(
+				Rect2(tile_position + Vector2(8, 20), Vector2(4, 3)),
+				rock_color
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(23, 9), Vector2(3, 2)),
+				sand_shadow
+			)
+
+		2:
+			# Sparse dried vegetation.
+			draw_line(
+				tile_position + Vector2(12, 24),
+				tile_position + Vector2(9, 19),
+				sand_shadow,
+				1.0
+			)
+			draw_line(
+				tile_position + Vector2(12, 24),
+				tile_position + Vector2(15, 20),
+				sand_shadow,
+				1.0
+			)
+
+		3:
+			# Subtle sand ripples.
+			draw_line(
+				tile_position + Vector2(6, 14),
+				tile_position + Vector2(16, 14),
+				sand_highlight,
+				1.0
+			)
+			draw_line(
+				tile_position + Vector2(11, 17),
+				tile_position + Vector2(21, 17),
+				sand_shadow,
+				1.0
+			)
+
+		4:
+			# Nearly bare sand.
+			draw_rect(
+				Rect2(tile_position + Vector2(21, 21), Vector2(3, 1)),
+				sand_highlight
+			)

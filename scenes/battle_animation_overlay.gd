@@ -58,7 +58,8 @@ var level_notice: PanelContainer
 var level_title: Label
 var level_stats_column: VBoxContainer
 var promotion_picker: PromotionSelection
-
+var sky_scenery: Control
+var ground_details: Control
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -67,8 +68,9 @@ func _ready() -> void:
 	ground.color = GROUND_COLOR
 	
 	setup_terrain_backgrounds()
-	
+	setup_sky_scenery()
 	setup_terrain_scenery()
+	setup_ground_details()
 	
 	enemy_sprite.color = ENEMY_COLOR
 	player_sprite.color = PLAYER_COLOR
@@ -163,6 +165,8 @@ func setup_battle(attacker: Unit, defender: Unit) -> void:
 	player_terrain_ground.color = get_battle_terrain_color(player_unit)
 	
 	update_terrain_scenery()
+	update_sky_scenery()
+	update_ground_details()
 	
 	player_name.text = player_unit.unit_data.character_name
 	enemy_name.text = enemy_unit.unit_data.character_name
@@ -814,6 +818,7 @@ func setup_terrain_backgrounds() -> void:
 
 
 
+
 func get_battle_terrain_color(unit: Unit) -> Color:
 	if battlefield_grid == null:
 		return GROUND_COLOR
@@ -822,18 +827,25 @@ func get_battle_terrain_color(unit: Unit) -> Color:
 		unit.grid_position
 	)
 
-	if terrain == null:
-		return GROUND_COLOR
+	# Special terrain takes priority over the map's biome.
+	if terrain != null:
+		match terrain.terrain_type:
+			TerrainResource.TerrainType.FOREST:
+				return Color("#285c32")
 
-	match terrain.terrain_type:
-		TerrainResource.TerrainType.FOREST:
-			return Color("#285c32")
+			TerrainResource.TerrainType.FORT:
+				return Color("#707986")
 
-		TerrainResource.TerrainType.FORT:
-			return Color("#707986")
+			TerrainResource.TerrainType.LAVA:
+				return Color("#9b3f28")
 
-		TerrainResource.TerrainType.LAVA:
-			return Color("#9b3f28")
+	# Ordinary ground reflects the battlefield's biome.
+	match battlefield_grid.biome:
+		BattlefieldGrid.Biome.DESERT:
+			return Color("#c5aa7e")
+
+		BattlefieldGrid.Biome.SNOW:
+			return Color("#d8e3e9")
 
 		_:
 			return GROUND_COLOR
@@ -849,6 +861,8 @@ func setup_terrain_scenery() -> void:
 
 
 
+
+
 func update_terrain_scenery() -> void:
 	for child in terrain_scenery.get_children():
 		child.queue_free()
@@ -858,36 +872,45 @@ func update_terrain_scenery() -> void:
 
 	var half_width: float = size.x / 2.0
 
-	var enemy_terrain: TerrainResource = battlefield_grid.get_terrain_at(
-		enemy_unit.grid_position
+	add_unit_terrain_scenery(enemy_unit, 0.0, half_width)
+	add_unit_terrain_scenery(player_unit, half_width, half_width)
+
+
+func add_unit_terrain_scenery(
+	unit: Unit,
+	start_x: float,
+	section_width: float
+) -> void:
+	var terrain: TerrainResource = battlefield_grid.get_terrain_at(
+		unit.grid_position
 	)
 
-	var player_terrain: TerrainResource = battlefield_grid.get_terrain_at(
-		player_unit.grid_position
-	)
-
-	if enemy_terrain != null:
-		match enemy_terrain.terrain_type:
+	if terrain != null:
+		match terrain.terrain_type:
 			TerrainResource.TerrainType.FOREST:
-				add_forest_scenery(Vector2(half_width * 0.5, size.y * 0.52))
+				add_forest_scenery(
+					Vector2(start_x + section_width / 2.0, size.y * 0.52)
+				)
+				return
 
 			TerrainResource.TerrainType.FORT:
-				add_fort_scenery(0.0, half_width)
+				add_fort_scenery(start_x, section_width)
+				return
 
 			TerrainResource.TerrainType.LAVA:
-				add_lava_scenery(0.0, half_width)
+				add_lava_scenery(start_x, section_width)
+				return
 
-	if player_terrain != null:
-		match player_terrain.terrain_type:
-			TerrainResource.TerrainType.FOREST:
-				add_forest_scenery(Vector2(half_width * 1.5, size.y * 0.52))
+	# Ordinary terrain uses the map's biome.
+	match battlefield_grid.biome:
+		BattlefieldGrid.Biome.GRASSLAND:
+			add_grassland_scenery(start_x, section_width)
 
-			TerrainResource.TerrainType.FORT:
-				add_fort_scenery(half_width, half_width)
+		BattlefieldGrid.Biome.DESERT:
+			add_desert_scenery(start_x, section_width)
 
-			TerrainResource.TerrainType.LAVA:
-				add_lava_scenery(half_width, half_width)
-
+		BattlefieldGrid.Biome.SNOW:
+			pass
 
 
 func add_forest_scenery(center: Vector2) -> void:
@@ -1031,3 +1054,355 @@ func add_lava_scenery(start_x: float, section_width: float) -> void:
 		)
 		rock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		terrain_scenery.add_child(rock)
+
+
+func add_desert_scenery(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	# Distant sand dunes.
+	var dune_color := Color("#d8be91")
+	var dune_shadow := Color("#b99a6e")
+
+	var dune := Polygon2D.new()
+	dune.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y),
+		Vector2(start_x, ground_y - 20),
+		Vector2(start_x + section_width * 0.25, ground_y - 65),
+		Vector2(start_x + section_width * 0.55, ground_y - 30),
+		Vector2(start_x + section_width * 0.8, ground_y - 55),
+		Vector2(start_x + section_width, ground_y - 15),
+		Vector2(start_x + section_width, ground_y)
+	])
+	dune.color = dune_color
+	terrain_scenery.add_child(dune)
+
+	# A smaller dune in front.
+	var foreground_dune := Polygon2D.new()
+	foreground_dune.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y),
+		Vector2(start_x + section_width * 0.15, ground_y - 15),
+		Vector2(start_x + section_width * 0.4, ground_y - 35),
+		Vector2(start_x + section_width * 0.7, ground_y - 10),
+		Vector2(start_x + section_width, ground_y),
+	])
+	foreground_dune.color = dune_shadow
+	terrain_scenery.add_child(foreground_dune)
+
+	# Small rocks along the ground.
+	for i in range(4):
+		var rock := ColorRect.new()
+		rock.color = Color("#897760")
+		rock.size = Vector2(12 + (i % 2) * 6, 6 + (i % 3) * 3)
+		rock.position = Vector2(
+			start_x + 30.0 + i * (section_width - 60.0) / 4.0,
+			ground_y - rock.size.y
+		)
+		rock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		terrain_scenery.add_child(rock)
+
+
+func add_grassland_scenery(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	var distant_hill_color := Color("#729c6a")
+	var near_hill_color := Color("#527f4d")
+	var bush_dark := Color("#315d35")
+	var bush_light := Color("#4e8a4c")
+
+	# Distant rolling hills.
+	var distant_hills := Polygon2D.new()
+	distant_hills.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y),
+		Vector2(start_x, ground_y - 15),
+		Vector2(start_x + section_width * 0.2, ground_y - 55),
+		Vector2(start_x + section_width * 0.45, ground_y - 30),
+		Vector2(start_x + section_width * 0.7, ground_y - 65),
+		Vector2(start_x + section_width, ground_y - 20),
+		Vector2(start_x + section_width, ground_y)
+	])
+	distant_hills.color = distant_hill_color
+	terrain_scenery.add_child(distant_hills)
+
+	# Nearer, darker hills.
+	var near_hills := Polygon2D.new()
+	near_hills.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y),
+		Vector2(start_x + section_width * 0.15, ground_y - 20),
+		Vector2(start_x + section_width * 0.4, ground_y - 35),
+		Vector2(start_x + section_width * 0.65, ground_y - 15),
+		Vector2(start_x + section_width, ground_y - 30),
+		Vector2(start_x + section_width, ground_y)
+	])
+	near_hills.color = near_hill_color
+	terrain_scenery.add_child(near_hills)
+
+	# Small bushes along the ground.
+	for i in range(4):
+		var bush := ColorRect.new()
+		bush.color = bush_dark
+		bush.size = Vector2(24, 12)
+		bush.position = Vector2(
+			start_x + 25.0 + i * (section_width - 50.0) / 4.0,
+			ground_y - 12.0
+		)
+		bush.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		terrain_scenery.add_child(bush)
+
+		var highlight := ColorRect.new()
+		highlight.color = bush_light
+		highlight.size = Vector2(14, 5)
+		highlight.position = Vector2(5, 2)
+		highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bush.add_child(highlight)
+
+func setup_sky_scenery() -> void:
+	sky_scenery = Control.new()
+	sky_scenery.name = "SkyScenery"
+	sky_scenery.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background.add_child(sky_scenery)
+	background.move_child(sky_scenery, 0)
+
+
+
+
+func update_sky_scenery() -> void:
+	for child in sky_scenery.get_children():
+		child.queue_free()
+
+	if battlefield_grid == null:
+		return
+
+	var half_width: float = size.x / 2.0
+
+	match battlefield_grid.biome:
+		BattlefieldGrid.Biome.GRASSLAND:
+			add_pixel_cloud(Vector2(half_width * 0.25, size.y * 0.16))
+			add_pixel_cloud(Vector2(half_width * 0.65, size.y * 0.28))
+			add_pixel_cloud(Vector2(half_width * 1.25, size.y * 0.19))
+			add_pixel_cloud(Vector2(half_width * 1.7, size.y * 0.12))
+
+		BattlefieldGrid.Biome.DESERT:
+			add_desert_sky_details()
+
+		BattlefieldGrid.Biome.SNOW:
+			pass
+
+
+
+func add_pixel_cloud(position: Vector2) -> void:
+	var cloud_color := Color("#c7d7df")
+	var cloud_highlight := Color("#e6edf1")
+
+	var cloud := Control.new()
+	cloud.position = position
+	cloud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sky_scenery.add_child(cloud)
+
+	var blocks: Array[Rect2] = [
+		Rect2(8, 8, 56, 16),
+		Rect2(16, 0, 32, 16),
+		Rect2(0, 16, 72, 12)
+	]
+
+	for block in blocks:
+		var rect := ColorRect.new()
+		rect.color = cloud_color
+		rect.position = block.position
+		rect.size = block.size
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cloud.add_child(rect)
+
+	var highlight := ColorRect.new()
+	highlight.color = cloud_highlight
+	highlight.position = Vector2(20, 4)
+	highlight.size = Vector2(24, 8)
+	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cloud.add_child(highlight)
+
+func setup_ground_details() -> void:
+	ground_details = Control.new()
+	ground_details.name = "GroundDetails"
+	ground_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ground_details.z_index = 5
+	background.add_child(ground_details)
+
+
+
+
+func update_ground_details() -> void:
+	for child in ground_details.get_children():
+		child.queue_free()
+
+	if battlefield_grid == null:
+		return
+
+	var half_width: float = size.x / 2.0
+
+	add_unit_ground_details(enemy_unit, 0.0, half_width)
+	add_unit_ground_details(player_unit, half_width, half_width)
+
+
+
+func add_unit_ground_details(
+	unit: Unit,
+	start_x: float,
+	section_width: float
+) -> void:
+	var terrain: TerrainResource = battlefield_grid.get_terrain_at(
+		unit.grid_position
+	)
+
+	# Special terrain will get its own ground decorations later.
+	if terrain != null:
+		if terrain.terrain_type != TerrainResource.TerrainType.PLAINS:
+			return
+
+	match battlefield_grid.biome:
+		BattlefieldGrid.Biome.GRASSLAND:
+			add_grassland_ground_details(start_x, section_width)
+
+		BattlefieldGrid.Biome.DESERT:
+			add_desert_ground_details(start_x, section_width)
+
+		BattlefieldGrid.Biome.SNOW:
+			pass
+
+
+
+func add_grassland_ground_details(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	var grass_dark := Color("#355c32")
+	var grass_light := Color("#91ad70")
+	var flower_yellow := Color("#eadb84")
+	var soil_color := Color("#526b46")
+
+	# Scatter details in a predictable pattern.
+	for i in range(14):
+		var x: float = start_x + 15.0 + float(i) * (section_width - 30.0) / 14.0
+		var y: float = ground_y + 18.0 + float((i * 17) % 65)
+
+		# Small grass tufts.
+		if i % 3 != 0:
+			var grass := Line2D.new()
+			grass.width = 2.0
+			grass.default_color = grass_dark if i % 2 == 0 else grass_light
+			grass.points = PackedVector2Array([
+				Vector2(x - 4, y - 5),
+				Vector2(x, y),
+				Vector2(x + 4, y - 7)
+			])
+			ground_details.add_child(grass)
+
+		# Occasional tiny flowers.
+		if i % 5 == 0:
+			var flower := ColorRect.new()
+			flower.color = flower_yellow
+			flower.position = Vector2(x + 5, y - 5)
+			flower.size = Vector2(4, 4)
+			flower.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(flower)
+
+		# Sparse patches of exposed soil.
+		if i % 4 == 0:
+			var soil := ColorRect.new()
+			soil.color = soil_color
+			soil.position = Vector2(x - 9, y + 8)
+			soil.size = Vector2(10, 2)
+			soil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(soil)
+
+
+func add_desert_ground_details(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	var ripple_dark := Color("#9b805b")
+	var ripple_light := Color("#e4cea3")
+	var pebble_color := Color("#776650")
+
+	for i in range(16):
+		var x: float = start_x + 12.0 + float(i) * (section_width - 24.0) / 16.0
+		var y: float = ground_y + 18.0 + float((i * 19) % 65)
+
+		# Short horizontal marks suggest wind-shaped sand.
+		if i % 3 != 0:
+			var ripple := Line2D.new()
+			ripple.width = 2.0
+			ripple.default_color = ripple_dark if i % 2 == 0 else ripple_light
+			ripple.points = PackedVector2Array([
+				Vector2(x - 7.0, y),
+				Vector2(x + 3.0, y),
+				Vector2(x + 7.0, y - 2.0)
+			])
+			ground_details.add_child(ripple)
+
+		# Occasional small stones.
+		if i % 5 == 0:
+			var pebble := ColorRect.new()
+			pebble.color = pebble_color
+			pebble.position = Vector2(x + 5.0, y + 6.0)
+			pebble.size = Vector2(5.0, 3.0)
+			pebble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(pebble)
+
+		# Tiny bright patches break up the flat sand colour.
+		if i % 4 == 0:
+			var highlight := ColorRect.new()
+			highlight.color = ripple_light
+			highlight.position = Vector2(x - 9.0, y + 10.0)
+			highlight.size = Vector2(9.0, 2.0)
+			highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(highlight)
+
+
+
+func add_desert_sky_details() -> void:
+	var haze_color := Color("#b7a6a0", 0.28)
+	var cloud_color := Color("#dfc8ae", 0.65)
+	var cloud_highlight := Color("#f0ddc2", 0.75)
+
+	# Thin atmospheric haze bands.
+	for i in range(4):
+		var haze := ColorRect.new()
+		haze.color = haze_color
+		haze.position = Vector2(
+			0.0,
+			size.y * (0.24 + float(i) * 0.11)
+		)
+		haze.size = Vector2(size.x, 6.0 + float(i % 2) * 4.0)
+		haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sky_scenery.add_child(haze)
+
+	# A few thin, stretched-out clouds.
+	var cloud_positions: Array[Vector2] = [
+		Vector2(size.x * 0.12, size.y * 0.15),
+		Vector2(size.x * 0.48, size.y * 0.23),
+		Vector2(size.x * 0.78, size.y * 0.12)
+	]
+
+	for cloud_position in cloud_positions:
+		var cloud := Control.new()
+		cloud.position = cloud_position
+		cloud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sky_scenery.add_child(cloud)
+
+		var main := ColorRect.new()
+		main.color = cloud_color
+		main.position = Vector2.ZERO
+		main.size = Vector2(110, 8)
+		main.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cloud.add_child(main)
+
+		var upper := ColorRect.new()
+		upper.color = cloud_highlight
+		upper.position = Vector2(24, -5)
+		upper.size = Vector2(55, 5)
+		upper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cloud.add_child(upper)
+
+		var tail := ColorRect.new()
+		tail.color = cloud_color
+		tail.position = Vector2(70, 8)
+		tail.size = Vector2(55, 4)
+		tail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cloud.add_child(tail)

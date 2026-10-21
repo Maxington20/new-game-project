@@ -1,6 +1,29 @@
 [gd_scene format=3 uid="uid://d2uobs2qi5nx2"]
 
 [ext_resource type="Script" uid="uid://bdxk7p8jgwg8a" path="res://scenes/grid.gd" id="1_3ioxg"]
+[ext_resource type="Script" uid="uid://cuvxx7egx0eo" path="res://scripts/resources/terrain_cell_resource.gd" id="2_lnrsu"]
+[ext_resource type="Resource" uid="uid://bt7sr3wa5kjkn" path="res://resources/terrain/fort.tres" id="3_6cofc"]
+[ext_resource type="Resource" uid="uid://iavasaifvytn" path="res://resources/terrain/forest.tres" id="4_6cofc"]
+[ext_resource type="Resource" uid="uid://de8wkfsymeumt" path="res://resources/terrain/lava.tres" id="5_7eh6v"]
+
+[sub_resource type="Resource" id="Resource_3xjfw"]
+script = ExtResource("2_lnrsu")
+position = Vector2i(5, 5)
+terrain = ExtResource("3_6cofc")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
+
+[sub_resource type="Resource" id="Resource_7eh6v"]
+script = ExtResource("2_lnrsu")
+position = Vector2i(5, 6)
+terrain = ExtResource("4_6cofc")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
+
+[sub_resource type="Resource" id="Resource_lo3r5"]
+script = ExtResource("2_lnrsu")
+position = Vector2i(5, 7)
+terrain = ExtResource("5_7eh6v")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
 
 [node name="Grid" type="Node2D" unique_id=1665304342]
 script = ExtResource("1_3ioxg")
+terrain_cells = Array[ExtResource("2_lnrsu")]([SubResource("Resource_3xjfw"), SubResource("Resource_7eh6v"), SubResource("Resource_lo3r5")])
