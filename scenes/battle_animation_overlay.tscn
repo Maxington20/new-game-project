@@ -31,38 +31,56 @@ layout_mode = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="EnemyInfo" type="VBoxContainer" parent="." unique_id=816295683]
+[node name="EnemyInfo" type="PanelContainer" parent="." unique_id=403934546]
 layout_mode = 0
 offset_right = 40.0
-offset_bottom = 40.0
+offset_bottom = 108.0
 
-[node name="NameLabel" type="Label" parent="EnemyInfo" unique_id=1132128923]
+[node name="Content" type="VBoxContainer" parent="EnemyInfo" unique_id=474371415]
 layout_mode = 2
 
-[node name="WeaponLabel" type="Label" parent="EnemyInfo" unique_id=961004368]
+[node name="Header" type="HBoxContainer" parent="EnemyInfo/Content" unique_id=2077846353]
 layout_mode = 2
 
-[node name="HPBar" type="ProgressBar" parent="EnemyInfo" unique_id=86993106]
+[node name="NameLabel" type="Label" parent="EnemyInfo/Content/Header" unique_id=1132128923]
 layout_mode = 2
 
-[node name="HPLabel" type="Label" parent="EnemyInfo" unique_id=160365673]
+[node name="LevelLabel" type="Label" parent="EnemyInfo/Content/Header" unique_id=1935523521]
 layout_mode = 2
 
-[node name="PlayerInfo" type="VBoxContainer" parent="." unique_id=1443472376]
+[node name="WeaponLabel" type="Label" parent="EnemyInfo/Content" unique_id=961004368]
+layout_mode = 2
+
+[node name="HPBar" type="ProgressBar" parent="EnemyInfo/Content" unique_id=86993106]
+layout_mode = 2
+
+[node name="HPLabel" type="Label" parent="EnemyInfo/Content" unique_id=160365673]
+layout_mode = 2
+
+[node name="PlayerInfo" type="PanelContainer" parent="." unique_id=615207336]
 layout_mode = 0
 offset_right = 40.0
-offset_bottom = 40.0
+offset_bottom = 108.0
 
-[node name="NameLabel" type="Label" parent="PlayerInfo" unique_id=1458793038]
+[node name="Content" type="VBoxContainer" parent="PlayerInfo" unique_id=2062547416]
 layout_mode = 2
 
-[node name="WeaponLabel" type="Label" parent="PlayerInfo" unique_id=1109857986]
+[node name="Header" type="HBoxContainer" parent="PlayerInfo/Content" unique_id=188592525]
 layout_mode = 2
 
-[node name="HPBar" type="ProgressBar" parent="PlayerInfo" unique_id=453668523]
+[node name="NameLabel" type="Label" parent="PlayerInfo/Content/Header" unique_id=1458793038]
 layout_mode = 2
 
-[node name="HPLabel" type="Label" parent="PlayerInfo" unique_id=407556728]
+[node name="LevelLabel" type="Label" parent="PlayerInfo/Content/Header" unique_id=89078277]
+layout_mode = 2
+
+[node name="WeaponLabel" type="Label" parent="PlayerInfo/Content" unique_id=1109857986]
+layout_mode = 2
+
+[node name="HPBar" type="ProgressBar" parent="PlayerInfo/Content" unique_id=453668523]
+layout_mode = 2
+
+[node name="HPLabel" type="Label" parent="PlayerInfo/Content" unique_id=407556728]
 layout_mode = 2
 
 [node name="CombatText" type="Label" parent="." unique_id=400642787]

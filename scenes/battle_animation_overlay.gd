@@ -9,18 +9,20 @@ signal battle_animation_finished
 @onready var enemy_sprite: ColorRect = $EnemySprite
 @onready var player_sprite: ColorRect = $PlayerSprite
 
-@onready var enemy_info: VBoxContainer = $EnemyInfo
-@onready var player_info: VBoxContainer = $PlayerInfo
+@onready var enemy_info: PanelContainer = $EnemyInfo
+@onready var player_info: PanelContainer = $PlayerInfo
 
-@onready var enemy_name: Label = $EnemyInfo/NameLabel
-@onready var enemy_weapon: Label = $EnemyInfo/WeaponLabel
-@onready var enemy_hp_bar: ProgressBar = $EnemyInfo/HPBar
-@onready var enemy_hp_label: Label = $EnemyInfo/HPLabel
+@onready var enemy_name: Label = $EnemyInfo/Content/Header/NameLabel
+@onready var enemy_level: Label = $EnemyInfo/Content/Header/LevelLabel
+@onready var enemy_weapon: Label = $EnemyInfo/Content/WeaponLabel
+@onready var enemy_hp_bar: ProgressBar = $EnemyInfo/Content/HPBar
+@onready var enemy_hp_label: Label = $EnemyInfo/Content/HPLabel
 
-@onready var player_name: Label = $PlayerInfo/NameLabel
-@onready var player_weapon: Label = $PlayerInfo/WeaponLabel
-@onready var player_hp_bar: ProgressBar = $PlayerInfo/HPBar
-@onready var player_hp_label: Label = $PlayerInfo/HPLabel
+@onready var player_name: Label = $PlayerInfo/Content/Header/NameLabel
+@onready var player_level: Label = $PlayerInfo/Content/Header/LevelLabel
+@onready var player_weapon: Label = $PlayerInfo/Content/WeaponLabel
+@onready var player_hp_bar: ProgressBar = $PlayerInfo/Content/HPBar
+@onready var player_hp_label: Label = $PlayerInfo/Content/HPLabel
 
 @onready var combat_text: Label = $CombatText
 
@@ -29,6 +31,9 @@ const GROUND_COLOR := Color("#657e56")
 
 const PLAYER_COLOR := Color("#4682b4")
 const ENEMY_COLOR := Color("#c74b50")
+
+const DESERT_SKY_COLOR := Color("#b9a6a0")
+const SNOW_SKY_COLOR := Color("#91afc4")
 
 const SPRITE_SIZE := Vector2(72, 96)
 const ATTACK_DISTANCE: float = 48.0
@@ -77,6 +82,7 @@ func _ready() -> void:
 
 	enemy_hp_bar.show_percentage = false
 	player_hp_bar.show_percentage = false
+	style_battle_status_panels()
 
 	combat_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	combat_text.add_theme_font_size_override("font_size", 24)
@@ -132,18 +138,16 @@ func layout_battle_screen() -> void:
 	)
 
 	enemy_info.position = Vector2(
-		24,
-		screen_size.y - 125
+	24,
+	screen_size.y - 160
 	)
-
-	enemy_info.size = Vector2(220, 100)
+	enemy_info.size = Vector2(260, 136)
 
 	player_info.position = Vector2(
-		screen_size.x - 244,
-		screen_size.y - 125
+		screen_size.x - 284,
+		screen_size.y - 160
 	)
-
-	player_info.size = Vector2(220, 100)
+	player_info.size = Vector2(260, 136)
 
 	combat_text.position = Vector2(
 		center_x - 200,
@@ -163,6 +167,7 @@ func setup_battle(attacker: Unit, defender: Unit) -> void:
 		
 	enemy_terrain_ground.color = get_battle_terrain_color(enemy_unit)
 	player_terrain_ground.color = get_battle_terrain_color(player_unit)
+	background.color = get_battle_sky_color()
 	
 	update_terrain_scenery()
 	update_sky_scenery()
@@ -170,7 +175,10 @@ func setup_battle(attacker: Unit, defender: Unit) -> void:
 	
 	player_name.text = player_unit.unit_data.character_name
 	enemy_name.text = enemy_unit.unit_data.character_name
-
+	
+	player_level.text = "Lv. " + str(player_unit.unit_data.level)
+	enemy_level.text = "Lv. " + str(enemy_unit.unit_data.level)
+	
 	player_weapon.text = get_weapon_name(player_unit)
 	enemy_weapon.text = get_weapon_name(enemy_unit)
 
@@ -203,10 +211,14 @@ func update_hp_labels() -> void:
 	var player_max_hp: int = (
 		player_unit.stats.max_hp
 	)
+	
+	player_level.text = "Lv. " + str(player_unit.unit_data.level)
 
 	var enemy_max_hp: int = (
 		enemy_unit.stats.max_hp
 	)
+	
+	enemy_level.text = "Lv. " + str(enemy_unit.unit_data.level)
 
 	player_hp_label.text = (
 		"HP: " + str(player_unit.current_hp)
@@ -1223,7 +1235,7 @@ func setup_ground_details() -> void:
 	ground_details = Control.new()
 	ground_details.name = "GroundDetails"
 	ground_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ground_details.z_index = 5
+	ground_details.z_index = 0
 	background.add_child(ground_details)
 
 
@@ -1254,8 +1266,18 @@ func add_unit_ground_details(
 
 	# Special terrain will get its own ground decorations later.
 	if terrain != null:
-		if terrain.terrain_type != TerrainResource.TerrainType.PLAINS:
-			return
+		match terrain.terrain_type:
+			TerrainResource.TerrainType.FOREST:
+				add_forest_ground_details(start_x, section_width)
+				return
+
+			TerrainResource.TerrainType.FORT:
+				add_fort_ground_details(start_x, section_width)
+				return
+
+			TerrainResource.TerrainType.LAVA:
+				add_lava_ground_details(start_x, section_width)
+				return
 
 	match battlefield_grid.biome:
 		BattlefieldGrid.Biome.GRASSLAND:
@@ -1406,3 +1428,204 @@ func add_desert_sky_details() -> void:
 		tail.size = Vector2(55, 4)
 		tail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cloud.add_child(tail)
+
+
+func get_battle_sky_color() -> Color:
+	if battlefield_grid == null:
+		return BACKGROUND_COLOR
+
+	match battlefield_grid.biome:
+		BattlefieldGrid.Biome.DESERT:
+			return DESERT_SKY_COLOR
+
+		BattlefieldGrid.Biome.SNOW:
+			return SNOW_SKY_COLOR
+
+		_:
+			return BACKGROUND_COLOR
+
+
+func add_forest_ground_details(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	var leaf_green := Color("#497b3e")
+	var leaf_brown := Color("#99734b")
+	var earth_dark := Color("#24472e")
+	var grass_light := Color("#63925a")
+
+	for i in range(18):
+		var x: float = start_x + 12.0 + float(i) * (section_width - 24.0) / 18.0
+		var y: float = ground_y + 15.0 + float((i * 23) % 70)
+
+		# Fallen leaves.
+		if i % 2 == 0:
+			var leaf := ColorRect.new()
+			leaf.color = leaf_green if i % 4 == 0 else leaf_brown
+			leaf.position = Vector2(x, y)
+			leaf.size = Vector2(6, 3)
+			leaf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(leaf)
+
+		# Small patches of exposed earth.
+		if i % 5 == 0:
+			var earth := ColorRect.new()
+			earth.color = earth_dark
+			earth.position = Vector2(x - 8, y + 7)
+			earth.size = Vector2(14, 3)
+			earth.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(earth)
+
+		# Sparse forest grass.
+		if i % 3 == 0:
+			var grass := Line2D.new()
+			grass.width = 2.0
+			grass.default_color = grass_light
+			grass.points = PackedVector2Array([
+				Vector2(x - 4, y - 5),
+				Vector2(x, y),
+				Vector2(x + 4, y - 7)
+			])
+			ground_details.add_child(grass)
+
+func add_fort_ground_details(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	var mortar_color := Color("#505966")
+	var stone_light := Color("#89939e")
+	var stone_dark := Color("#606a76")
+
+	var tile_width: float = 48.0
+	var tile_height: float = 24.0
+
+	var row_index := 0
+	var y: float = ground_y + 12.0
+
+	while y < size.y:
+		# Horizontal mortar line.
+		var horizontal := ColorRect.new()
+		horizontal.color = mortar_color
+		horizontal.position = Vector2(start_x, y)
+		horizontal.size = Vector2(section_width, 2)
+		horizontal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ground_details.add_child(horizontal)
+
+		# Offset alternating rows to create a brick pattern.
+		var offset: float = 0.0 if row_index % 2 == 0 else tile_width / 2.0
+		var x: float = start_x + offset
+
+		while x < start_x + section_width:
+			var vertical := ColorRect.new()
+			vertical.color = mortar_color
+			vertical.position = Vector2(x, y)
+			vertical.size = Vector2(2, tile_height)
+			vertical.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(vertical)
+
+			x += tile_width
+
+		y += tile_height
+		row_index += 1
+
+	# Subtle stone highlights and weathering.
+	for i in range(12):
+		var x: float = start_x + 14.0 + float((i * 43) % int(maxf(section_width - 28.0, 1.0)))
+		var detail_y: float = ground_y + 20.0 + float((i * 29) % 85)
+
+		var detail := ColorRect.new()
+		detail.color = stone_light if i % 3 == 0 else stone_dark
+		detail.position = Vector2(x, detail_y)
+		detail.size = Vector2(12, 3)
+		detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ground_details.add_child(detail)
+
+
+
+func style_battle_status_panels() -> void:
+	
+	enemy_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	player_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	for panel in [enemy_info, player_info]:
+		panel.add_theme_stylebox_override(
+			"panel",
+			GameUIStyle.make_panel_style()
+		)
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	for label in [enemy_name, player_name]:
+		GameUIStyle.style_label(label, 18)
+
+	for label in [enemy_weapon, player_weapon]:
+		GameUIStyle.style_label(label, 14, true)
+
+	for label in [enemy_hp_label, player_hp_label]:
+		GameUIStyle.style_label(label, 14)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	
+	for label in [enemy_level, player_level]:
+		GameUIStyle.style_label(label, 13, true)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	
+	for hp_bar in [enemy_hp_bar, player_hp_bar]:
+		hp_bar.show_percentage = false
+		hp_bar.custom_minimum_size.y = 12
+
+		var fill_style := StyleBoxFlat.new()
+		fill_style.bg_color = GameUIStyle.HEALTH
+		fill_style.set_corner_radius_all(3)
+
+		var background_style := StyleBoxFlat.new()
+		background_style.bg_color = GameUIStyle.BACKGROUND
+		background_style.set_corner_radius_all(3)
+
+		hp_bar.add_theme_stylebox_override("fill", fill_style)
+		hp_bar.add_theme_stylebox_override("background", background_style)
+
+
+func add_lava_ground_details(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	var crack_dark := Color("#392a2b")
+	var lava_orange := Color("#ff762b")
+	var lava_yellow := Color("#ffb347")
+	var ash_color := Color("#68413a")
+
+	for i in range(12):
+		var x: float = start_x + 18.0 + float(i) * (section_width - 36.0) / 12.0
+		var y: float = ground_y + 20.0 + float((i * 19) % 65)
+
+		# Jagged cracks across the volcanic ground.
+		var crack := Line2D.new()
+		crack.width = 3.0
+		crack.default_color = crack_dark
+		crack.points = PackedVector2Array([
+			Vector2(x - 10.0, y),
+			Vector2(x - 3.0, y + 4.0),
+			Vector2(x + 5.0, y - 2.0),
+			Vector2(x + 13.0, y + 3.0)
+		])
+		ground_details.add_child(crack)
+
+		# Some cracks have molten lava showing through.
+		if i % 3 == 0:
+			var fissure := Line2D.new()
+			fissure.width = 2.0
+			fissure.default_color = lava_orange
+			fissure.points = crack.points
+			ground_details.add_child(fissure)
+
+			var hotspot := ColorRect.new()
+			hotspot.color = lava_yellow
+			hotspot.position = Vector2(x + 3.0, y - 3.0)
+			hotspot.size = Vector2(5.0, 3.0)
+			hotspot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(hotspot)
+
+		# Small scattered patches of volcanic ash.
+		if i % 4 == 0:
+			var ash := ColorRect.new()
+			ash.color = ash_color
+			ash.position = Vector2(x - 8.0, y + 10.0)
+			ash.size = Vector2(12.0, 3.0)
+			ash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(ash)
