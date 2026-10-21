@@ -47,6 +47,7 @@ var attack_cells: Array[Vector2i] = []
 
 
 func _draw() -> void:
+	print("Adjacent to lava: ", is_adjacent_to_lava(Vector2i(3, 4)))
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
 			var cell := Vector2i(x, y)
@@ -59,7 +60,20 @@ func _draw() -> void:
 			# Base ground colour depends on the map's biome.
 			var color: Color = get_biome_ground_color(cell)
 				
-			
+			# Lava scorches the surrounding ground.
+			# This is visual only; the terrain's gameplay properties stay unchanged.
+			var scorched: bool = is_adjacent_to_lava(cell)
+
+			# Lava tiles keep their own appearance, even when
+			# another lava tile is adjacent.
+			var current_terrain := get_terrain_at(cell)
+
+			if current_terrain != null:
+				if current_terrain.terrain_type == TerrainResource.TerrainType.LAVA:
+					scorched = false
+
+			if scorched:
+				color = Color("#514943")
 
 			# Special terrain.
 			var terrain := get_terrain_at(cell)
@@ -67,7 +81,7 @@ func _draw() -> void:
 			if terrain != null:
 				var terrain_color := get_terrain_color(terrain)
 
-				if terrain_color.a > 0.0:
+				if terrain_color.a > 0.0 and not scorched:
 					color = terrain_color
 
 			# Blocked terrain.
@@ -79,19 +93,29 @@ func _draw() -> void:
 
 			# Draw terrain decorations.
 			if not blocked_cells.has(cell):
+				if scorched:
+					draw_scorched_tile(cell, rect.position)
+					draw_scorched_edges(cell, rect.position)
 				if terrain == null or terrain.terrain_type == TerrainResource.TerrainType.PLAINS:
-					match biome:
-						Biome.DESERT:
-							draw_desert_tile(cell, rect.position)
+					if not scorched:
+						match biome:
+							Biome.DESERT:
+								draw_desert_tile(cell, rect.position)
 
-						Biome.GRASSLAND:
-							draw_plains_tile(cell, rect.position)
+							Biome.GRASSLAND:
+								draw_plains_tile(cell, rect.position)
 
-						Biome.SNOW:
-							draw_snow_tile(cell, rect.position)
+							Biome.SNOW:
+								draw_snow_tile(cell, rect.position)
 				else:
 					match terrain.terrain_type:
 						TerrainResource.TerrainType.FOREST:
+							match biome:
+								Biome.SNOW:
+									draw_snow_tile(cell, rect.position)
+								Biome.DESERT:
+									draw_desert_tile(cell, rect.position)
+
 							draw_forest_tile(rect.position)
 
 						TerrainResource.TerrainType.FORT:
@@ -108,6 +132,13 @@ func _draw() -> void:
 					line_color = DESERT_LINES
 				Biome.SNOW:
 					line_color = SNOW_LINES
+			
+			# Darker grid lines for volcanic terrain.
+			if scorched or (
+				terrain != null
+				and terrain.terrain_type == TerrainResource.TerrainType.LAVA
+			):
+				line_color = Color("#403630")
 
 			draw_rect(rect, line_color, false, 1.0)
 
@@ -139,11 +170,49 @@ func _draw() -> void:
 
 
 func draw_forest_tile(tile_position: Vector2) -> void:
-	# Three small trees arranged in a cluster.
+	if biome == Biome.DESERT:
+		draw_desert_palm(tile_position + Vector2(4, 3))
+		draw_desert_palm(tile_position + Vector2(17, 10))
+		return
+
+	# Existing forest trees for grassland and snow.
 	draw_pixel_tree(tile_position + Vector2(5, 5), 0.85)
 	draw_pixel_tree(tile_position + Vector2(17, 3), 0.85)
 	draw_pixel_tree(tile_position + Vector2(11, 16), 0.85)
 
+
+func draw_desert_palm(position: Vector2) -> void:
+	var trunk_color := Color("#85603c")
+	var leaf_dark := Color("#587346")
+	var leaf_light := Color("#87975b")
+
+	# Narrow palm trunk.
+	draw_rect(
+		Rect2(position + Vector2(6, 7), Vector2(3, 12)),
+		trunk_color
+	)
+
+	# Palm fronds spreading outward.
+	draw_rect(
+		Rect2(position + Vector2(2, 4), Vector2(12, 3)),
+		leaf_dark
+	)
+
+	draw_rect(
+		Rect2(position + Vector2(0, 6), Vector2(5, 3)),
+		leaf_dark
+	)
+
+	draw_rect(
+		Rect2(position + Vector2(11, 6), Vector2(5, 3)),
+		leaf_dark
+	)
+
+	# Lighter upper leaves.
+	draw_rect(
+		Rect2(position + Vector2(5, 2), Vector2(6, 4)),
+		leaf_light
+	)
 
 func draw_pixel_tree(
 	position: Vector2,
@@ -152,6 +221,11 @@ func draw_pixel_tree(
 	var foliage_dark := Color("#164526")
 	var foliage_light := Color("#3c9650")
 	var trunk_color := Color("#795437")
+
+	if biome == Biome.SNOW:
+		foliage_dark = Color("#587b72")
+		foliage_light = Color("#eaf3f7")
+		trunk_color = Color("#59646a")
 
 	# Draw a small trunk.
 	draw_rect(
@@ -417,6 +491,25 @@ func get_terrain_at(cell: Vector2i) -> TerrainResource:
 
 	return null
 
+func is_adjacent_to_lava(cell: Vector2i) -> bool:
+	for y_offset in range(-1, 2):
+		for x_offset in range(-1, 2):
+			# Skip the tile itself.
+			if x_offset == 0 and y_offset == 0:
+				continue
+
+			var neighbor := cell + Vector2i(x_offset, y_offset)
+
+			if not is_cell_in_bounds(neighbor):
+				continue
+
+			var terrain := get_terrain_at(neighbor)
+
+			if terrain != null:
+				if terrain.terrain_type == TerrainResource.TerrainType.LAVA:
+					return true
+
+	return false
 
 func get_terrain_color(terrain: TerrainResource) -> Color:
 	if terrain == null:
@@ -424,13 +517,25 @@ func get_terrain_color(terrain: TerrainResource) -> Color:
 
 	match terrain.terrain_type:
 		TerrainResource.TerrainType.FOREST:
-			return Color("#246b35")
+			match biome:
+				Biome.SNOW:
+					return get_biome_ground_color(Vector2i.ZERO)
+				Biome.DESERT:
+					return get_biome_ground_color(Vector2i.ZERO)
+				_:
+					return Color("#246b35")
 
 		TerrainResource.TerrainType.FORT:
-			return Color("#667788")
+			match biome:
+				Biome.DESERT:
+					return DESERT_LIGHT
+				Biome.SNOW:
+					return SNOW_LIGHT
+				_:
+					return Color("#667788")
 
 		TerrainResource.TerrainType.LAVA:
-			return Color("#e65c20")
+			return Color("#763b2d")
 
 		_:
 			return Color.TRANSPARENT
@@ -452,7 +557,13 @@ func draw_fort_tile(tile_position: Vector2) -> void:
 	var stone_mid := Color("#718498")
 	var stone_light := Color("#a1b0bf")
 	var gate_color := Color("#25303b")
-
+	
+	if biome == Biome.DESERT:
+		stone_dark = Color("#806747")
+		stone_mid = Color("#b89a6b")
+		stone_light = Color("#dfc69a")
+		gate_color = Color("#493b2c")
+	
 	# Castle foundation.
 	draw_rect(
 		Rect2(tile_position + Vector2(3, 13), Vector2(26, 17)),
@@ -513,6 +624,30 @@ func draw_fort_tile(tile_position: Vector2) -> void:
 		Rect2(tile_position + Vector2(24, 13), Vector2(2, 4)),
 		gate_color
 	)
+	
+	if biome == Biome.SNOW:
+		var snow_top := Color("#f0f6fa")
+		var snow_shadow := Color("#b8cad6")
+
+		# Snow covering the tower battlements.
+		for x in [2, 7, 21, 26]:
+			draw_rect(
+				Rect2(tile_position + Vector2(x, 4), Vector2(5, 2)),
+				snow_top
+			)
+
+		# Snow covering the central wall battlements.
+		for x in [12, 17]:
+			draw_rect(
+				Rect2(tile_position + Vector2(x, 11), Vector2(4, 2)),
+				snow_top
+			)
+
+		# Snow accumulated along the base of the fort.
+		draw_rect(
+			Rect2(tile_position + Vector2(3, 28), Vector2(26, 2)),
+			snow_shadow
+		)
 
 
 
@@ -579,7 +714,113 @@ func draw_lava_tile(tile_position: Vector2) -> void:
 		lava_hot
 	)
 
+func draw_scorched_tile(cell: Vector2i, tile_position: Vector2) -> void:
+	var crack_color := Color("#292725")
+	var ash_color := Color("#75665b")
 
+	# Alternate the details so neighbouring tiles aren't identical.
+	var variation: int = (cell.x * 7 + cell.y * 11) % 3
+
+	match variation:
+		0:
+			draw_line(
+				tile_position + Vector2(5, 9),
+				tile_position + Vector2(13, 15),
+				crack_color,
+				2.0
+			)
+			draw_line(
+				tile_position + Vector2(13, 15),
+				tile_position + Vector2(10, 24),
+				crack_color,
+				2.0
+			)
+
+		1:
+			draw_line(
+				tile_position + Vector2(20, 5),
+				tile_position + Vector2(15, 14),
+				crack_color,
+				2.0
+			)
+			draw_line(
+				tile_position + Vector2(15, 14),
+				tile_position + Vector2(25, 23),
+				crack_color,
+				2.0
+			)
+
+		2:
+			draw_line(
+				tile_position + Vector2(7, 20),
+				tile_position + Vector2(17, 12),
+				crack_color,
+				2.0
+			)
+
+	# Small patches of ash.
+	draw_rect(
+		Rect2(tile_position + Vector2(5, 26), Vector2(7, 2)),
+		ash_color
+	)
+	
+	# Occasional faint glow from heat beneath the rock.
+	if (cell.x * 3 + cell.y * 7) % 4 == 0:
+		var ember_color := Color("#a65a32")
+
+		draw_line(
+			tile_position + Vector2(12, 15),
+			tile_position + Vector2(16, 18),
+			ember_color,
+			1.0
+		)
+
+		draw_rect(
+			Rect2(
+				tile_position + Vector2(16, 18),
+				Vector2(2, 2)
+			),
+			ember_color
+		)
+
+func draw_scorched_edges(cell: Vector2i, tile_position: Vector2) -> void:
+	var edge_color := Color("#514943")
+
+	# Only extend scorched ground toward neighbouring
+	# tiles that aren't already scorched or lava.
+	for direction in DIRECTIONS:
+		var neighbor := cell + direction
+
+		if not is_cell_in_bounds(neighbor):
+			continue
+
+		if is_adjacent_to_lava(neighbor):
+			continue
+
+		var neighbor_terrain := get_terrain_at(neighbor)
+
+		if neighbor_terrain != null:
+			if neighbor_terrain.terrain_type == TerrainResource.TerrainType.LAVA:
+				continue
+
+		var edge_position := tile_position + Vector2(direction * CELL_SIZE)
+
+		match direction:
+			Vector2i.UP:
+				draw_rect(Rect2(edge_position + Vector2(5, 27), Vector2(8, 5)), edge_color)
+				draw_rect(Rect2(edge_position + Vector2(19, 29), Vector2(6, 3)), edge_color)
+
+			Vector2i.DOWN:
+				draw_rect(Rect2(edge_position + Vector2(8, 0), Vector2(10, 4)), edge_color)
+				draw_rect(Rect2(edge_position + Vector2(23, 0), Vector2(5, 2)), edge_color)
+
+			Vector2i.LEFT:
+				draw_rect(Rect2(edge_position + Vector2(27, 6), Vector2(5, 9)), edge_color)
+				draw_rect(Rect2(edge_position + Vector2(29, 20), Vector2(3, 6)), edge_color)
+
+			Vector2i.RIGHT:
+				draw_rect(Rect2(edge_position + Vector2(0, 8), Vector2(4, 8)), edge_color)
+				draw_rect(Rect2(edge_position + Vector2(0, 23), Vector2(2, 5)), edge_color)
 
 func draw_plains_tile(cell: Vector2i, tile_position: Vector2) -> void:
 	# A stable pseudo-random pattern based on cell coordinates.
