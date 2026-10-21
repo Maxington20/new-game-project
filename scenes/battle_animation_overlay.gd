@@ -86,6 +86,25 @@ func _ready() -> void:
 
 	combat_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	combat_text.add_theme_font_size_override("font_size", 24)
+	
+	combat_text.add_theme_color_override(
+		"font_outline_color",
+		Color("#1a1a2e")
+	)
+	combat_text.add_theme_constant_override("outline_size", 4)
+	
+	combat_text.add_theme_color_override(
+		"font_shadow_color",
+		Color(0.0, 0.0, 0.0, 0.6)
+	)
+	combat_text.add_theme_constant_override(
+		"shadow_offset_x",
+		2
+	)
+	combat_text.add_theme_constant_override(
+		"shadow_offset_y",
+		2
+	)
 
 	_build_rank_notification()
 	_build_exp_notification()
@@ -194,10 +213,31 @@ func setup_battle(attacker: Unit, defender: Unit) -> void:
 	enemy_hp_bar.value = enemy_unit.current_hp
 
 	update_hp_labels()
-
+	
+	player_sprite.modulate.a = 1.0
+	enemy_sprite.modulate.a = 1.0
+	
+	player_sprite.color = PLAYER_COLOR
+	enemy_sprite.color = ENEMY_COLOR
+	player_sprite.rotation = 0.0
+	enemy_sprite.rotation = 0.0
+	
 	combat_text.text = ""
+	modulate.a = 0.0
 	show()
+
+	# Restore both sprites to their default battle positions.
 	layout_battle_screen()
+
+	var fade_tween := create_tween()
+	fade_tween.tween_property(
+		self,
+		"modulate:a",
+		1.0,
+		0.3
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+	await fade_tween.finished
 
 
 func get_weapon_name(unit: Unit) -> String:
@@ -239,9 +279,7 @@ func play_battle(attacker: Unit, defender: Unit) -> void:
 	pending_rank_ups.clear()
 	player_participated = false
 	player_defeated_enemy = false
-	setup_battle(attacker, defender)
-
-	await get_tree().create_timer(0.45).timeout
+	await setup_battle(attacker, defender)
 
 	var attacker_follows: bool = (
 		CombatCalculator.can_follow_up(attacker, defender)
@@ -251,26 +289,43 @@ func play_battle(attacker: Unit, defender: Unit) -> void:
 		CombatCalculator.can_counterattack(defender, attacker)
 		and CombatCalculator.can_follow_up(defender, attacker)
 	)
-
+	
+	await get_tree().create_timer(0.45).timeout
 	await play_strike(attacker, defender)
 
 	if attacker.current_hp > 0 and defender.current_hp > 0:
 		if CombatCalculator.can_counterattack(defender, attacker):
+			await get_tree().create_timer(0.2).timeout
 			await play_strike(defender, attacker)
 
 	if attacker.current_hp > 0 and defender.current_hp > 0:
 		if attacker_follows:
+			await get_tree().create_timer(0.2).timeout
 			await play_strike(attacker, defender)
 		elif defender_follows:
+			await get_tree().create_timer(0.2).timeout
 			await play_strike(defender, attacker)
 
+	
 	await get_tree().create_timer(0.7).timeout
 	await _award_and_show_player_exp()
 	await _show_pending_rank_ups()
 
+	var fade_tween := create_tween()
+	fade_tween.tween_property(
+		self,
+		"modulate:a",
+		0.0,
+		0.3
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+	await fade_tween.finished
+
 	hide()
+	modulate.a = 1.0
 	is_playing = false
 	battle_animation_finished.emit()
+
 
 
 func award_weapon_experience(attacker: Unit) -> void:
@@ -686,21 +741,35 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 	)
 
 	var starting_position: Vector2 = attacking_sprite.position
-
+	
+	combat_text.text = ""
+	combat_text.modulate.a = 0.0
+	combat_text.add_theme_color_override("font_color", Color.WHITE)
+	
 	combat_text.text = (
 		attacker.unit_data.character_name + " attacks!"
 	)
+	
+	var announcement_tween := create_tween()
+	announcement_tween.tween_property(
+		combat_text,
+		"modulate:a",
+		1.0,
+		0.12
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
+	
 	var forward_tween := create_tween()
 
 	forward_tween.tween_property(
 		attacking_sprite,
 		"position:x",
 		starting_position.x + direction * ATTACK_DISTANCE,
-		0.18
-	)
+		0.12
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 
 	await forward_tween.finished
+
 
 	
 	var defender_terrain: TerrainResource = null
@@ -722,6 +791,16 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 		attacking_sprite.position = starting_position
 		return
 
+	# Return immediately after impact, concurrently with hit or dodge effects.
+	# Do not await here: HP and defeat animations should not delay the return.
+	var return_tween := create_tween()
+	return_tween.tween_property(
+		attacking_sprite,
+		"position",
+		starting_position,
+		0.22
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
 	# A valid player strike counts once toward encounter EXP, even on a miss.
 	if attacker.team == Unit.Team.PLAYER:
 		player_participated = true
@@ -735,10 +814,26 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 	if result["hit"]:
 		var damage: int = result["damage"]
 
+		animate_hit_flash(defender)
+		animate_hit_knockback(defender)
+
 		if result["critical"]:
-			combat_text.text = "CRITICAL HIT!"
+			combat_text.add_theme_color_override(
+				"font_color",
+				Color("#ffd166")
+			)
+			combat_text.text = "CRITICAL HIT! " + str(damage) + " DAMAGE!"
+			animate_critical_flash()
+			animate_critical_shake()
 		else:
+			combat_text.add_theme_color_override(
+				"font_color",
+				Color.WHITE
+			)
 			combat_text.text = str(damage) + " DAMAGE!"
+
+		if result["critical"]:
+			await get_tree().create_timer(0.18).timeout
 
 		defender.current_hp = maxi(
 			0,
@@ -747,44 +842,38 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 
 		await animate_hp_bar(defender)
 
-		print(
-			attacker_name,
-			" hits ",
-			defender_name,
-			" for ",
-			damage,
-			" damage. Remaining HP: ",
-			defender.current_hp
-		)
-
 		if defender.current_hp <= 0:
 			if attacker.team == Unit.Team.PLAYER and defender.team == Unit.Team.ENEMY:
-				player_defeated_enemy = true
+				player_defeated_enemy = true				
+			combat_text.add_theme_color_override("font_color", Color.WHITE)
 			combat_text.text = (
 				defender_name + " defeated!"
 			)
+			await get_tree().create_timer(0.15).timeout
+			animate_defeat_shake()
+			await animate_defeat(defender)
+			await get_tree().create_timer(0.35).timeout
 
 	else:
-		combat_text.text = "MISS!"
-
-		print(
-			attacker_name,
-			" attacks ",
-			defender_name,
-			" - MISS!"
+		combat_text.add_theme_color_override(
+			"font_color",
+			Color("#fff176")
 		)
+		combat_text.text = "MISS!"
+		await animate_dodge(defender)
 
-	var return_tween := create_tween()
+	
+	var text_fade := create_tween()
+	text_fade.tween_property(
+		combat_text,
+		"modulate:a",
+		0.0,
+		0.25
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
-	return_tween.tween_property(
-		attacking_sprite,
-		"position",
-		starting_position,
-		0.18
-	)
+	await text_fade.finished
+	await get_tree().create_timer(0.25).timeout
 
-	await return_tween.finished
-	await get_tree().create_timer(0.35).timeout
 
 
 func animate_hp_bar(unit: Unit) -> void:
@@ -805,6 +894,210 @@ func animate_hp_bar(unit: Unit) -> void:
 
 	await tween.finished
 	update_hp_labels()
+
+
+
+func animate_hit_flash(unit: Unit) -> void:
+	var sprite: ColorRect = (
+		player_sprite
+		if unit.team == Unit.Team.PLAYER
+		else enemy_sprite
+	)
+
+	var original_color: Color = sprite.color
+
+	sprite.color = Color.WHITE
+	await get_tree().create_timer(0.08).timeout
+
+	sprite.color = original_color
+	await get_tree().create_timer(0.08).timeout
+
+	sprite.color = Color.WHITE
+	await get_tree().create_timer(0.08).timeout
+
+	sprite.color = original_color
+
+
+
+func animate_hit_knockback(unit: Unit) -> void:
+	var sprite: ColorRect = (
+		player_sprite
+		if unit.team == Unit.Team.PLAYER
+		else enemy_sprite
+	)
+
+	var starting_position: Vector2 = sprite.position
+	
+	var shake_tween := create_tween()
+
+	shake_tween.tween_property(
+		sprite,
+		"position:y",
+		starting_position.y - 5.0,
+		0.06
+	)
+
+	shake_tween.tween_property(
+		sprite,
+		"position:y",
+		starting_position.y + 4.0,
+		0.06
+	)
+
+	shake_tween.tween_property(
+		sprite,
+		"position:y",
+		starting_position.y,
+		0.08
+	)
+
+	# The player is on the right; the enemy is on the left.
+	var direction: float = (
+		1.0 if unit.team == Unit.Team.PLAYER else -1.0
+	)
+
+	var tween := create_tween()
+
+	tween.tween_property(
+		sprite,
+		"position:x",
+		starting_position.x + direction * 18.0,
+		0.08
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+	tween.tween_property(
+		sprite,
+		"position:x",
+		starting_position.x,
+		0.16
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+	await tween.finished
+
+func animate_critical_shake() -> void:
+	var starting_position: Vector2 = position
+
+	var tween := create_tween()
+	tween.tween_property(
+		self, "position", starting_position + Vector2(-6, 0), 0.04
+	)
+	tween.tween_property(
+		self, "position", starting_position + Vector2(6, 0), 0.04
+	)
+	tween.tween_property(
+		self, "position", starting_position + Vector2(-3, 0), 0.04
+	)
+	tween.tween_property(
+		self, "position", starting_position, 0.06
+	)
+
+	await tween.finished
+
+func animate_defeat_shake() -> void:
+	var starting_position: Vector2 = position
+
+	var tween := create_tween()
+
+	tween.tween_property(
+		self, "position", starting_position + Vector2(-3, 0), 0.05
+	)
+
+	tween.tween_property(
+		self, "position", starting_position + Vector2(3, 0), 0.05
+	)
+
+	tween.tween_property(
+		self, "position", starting_position, 0.08
+	)
+
+	await tween.finished
+
+func animate_critical_flash() -> void:
+	var flash := ColorRect.new()
+	flash.color = Color(1.0, 1.0, 1.0, 0.65)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	add_child(flash)
+
+	var tween := create_tween()
+	tween.tween_property(
+		flash,
+		"modulate:a",
+		0.0,
+		0.25
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+	await tween.finished
+	flash.queue_free()
+
+
+
+func animate_dodge(unit: Unit) -> void:
+	var sprite: ColorRect = (
+		player_sprite
+		if unit.team == Unit.Team.PLAYER
+		else enemy_sprite
+	)
+
+	var starting_position: Vector2 = sprite.position
+	var starting_rotation: float = sprite.rotation
+	var starting_alpha: float = sprite.modulate.a
+
+	# Dodge away from the attacker.
+	var direction: float = (
+		1.0 if unit.team == Unit.Team.PLAYER else -1.0
+	)
+
+	
+	var tween := create_tween()
+	tween.set_parallel(true)
+	
+	tween.tween_property(
+		sprite,
+		"modulate:a",
+		0.5,
+		0.10
+	)
+	
+	tween.tween_property(
+		sprite,
+		"position:x",
+		starting_position.x + direction * 32.0,
+		0.10
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+	tween.tween_property(
+		sprite,
+		"rotation",
+		starting_rotation + direction * 0.12,
+		0.10
+	)
+
+	tween.chain().tween_property(
+		sprite,
+		"position:x",
+		starting_position.x,
+		0.20
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+
+	tween.tween_property(
+		sprite,
+		"rotation",
+		starting_rotation,
+		0.20
+	)
+	
+	tween.tween_property(
+		sprite,
+		"modulate:a",
+		starting_alpha,
+		0.20
+	)
+
+	await tween.finished
+
+
 
 
 func finish_battle() -> void:
@@ -1706,3 +1999,42 @@ func add_snow_ground_details(start_x: float, section_width: float) -> void:
 			fleck.size = Vector2(4.0, 2.0)
 			fleck.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			ground_details.add_child(fleck)
+
+
+
+
+func animate_defeat(unit: Unit) -> void:
+	var sprite: ColorRect = (
+		player_sprite
+		if unit.team == Unit.Team.PLAYER
+		else enemy_sprite
+	)
+	
+	var original_color: Color = sprite.color
+
+	sprite.color = Color.WHITE
+	await get_tree().create_timer(0.08).timeout
+	sprite.color = original_color
+	
+	var starting_position: Vector2 = sprite.position
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+
+	tween.tween_property(
+		sprite,
+		"modulate:a",
+		0.0,
+		0.5
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+	tween.tween_property(
+		sprite,
+		"position:y",
+		starting_position.y + 24.0,
+		0.5
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+
+	await tween.finished
+
+	sprite.position = starting_position

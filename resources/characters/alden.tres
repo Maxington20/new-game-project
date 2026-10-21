@@ -22,9 +22,8 @@ metadata/_custom_type_script = "uid://d4fxcftm7ngnx"
 [sub_resource type="Resource" id="Resource_0koqq"]
 script = ExtResource("4_rua2d")
 strength = 7
-skill = 7
+skill = 200
 speed = 8
-luck = 5
 defense = 4
 resistance = 2
 metadata/_custom_type_script = "uid://t10sajlur7qt"
