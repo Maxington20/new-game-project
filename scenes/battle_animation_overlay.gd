@@ -922,7 +922,7 @@ func add_unit_terrain_scenery(
 			add_desert_scenery(start_x, section_width)
 
 		BattlefieldGrid.Biome.SNOW:
-			pass
+			add_snow_scenery(start_x, section_width)
 
 
 func add_forest_scenery(center: Vector2) -> void:
@@ -1287,7 +1287,7 @@ func add_unit_ground_details(
 			add_desert_ground_details(start_x, section_width)
 
 		BattlefieldGrid.Biome.SNOW:
-			pass
+			add_snow_ground_details(start_x, section_width)
 
 
 
@@ -1629,3 +1629,80 @@ func add_lava_ground_details(start_x: float, section_width: float) -> void:
 			ash.size = Vector2(12.0, 3.0)
 			ash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			ground_details.add_child(ash)
+
+
+
+func add_snow_scenery(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	# Distant snow-covered hills.
+	var hills := Polygon2D.new()
+	hills.color = Color("#b2c9d7")
+	hills.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y),
+		Vector2(start_x, ground_y - 20.0),
+		Vector2(start_x + section_width * 0.22, ground_y - 75.0),
+		Vector2(start_x + section_width * 0.48, ground_y - 35.0),
+		Vector2(start_x + section_width * 0.76, ground_y - 90.0),
+		Vector2(start_x + section_width, ground_y - 25.0),
+		Vector2(start_x + section_width, ground_y)
+	])
+	terrain_scenery.add_child(hills)
+
+
+
+func add_snow_ground_details(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	var snow_highlight := Color("#f0f6fa")
+	var snow_shadow := Color("#b8cad6")
+	var ice_color := Color("#a8d0df")
+
+	for i in range(12):
+		var x: float = start_x + 18.0 + float(i) * (section_width - 36.0) / 12.0
+		var y: float = ground_y + 18.0 + float((i * 23) % 65)
+
+		# Small wind-shaped snowdrifts.
+		if i % 2 == 0:
+			var drift := Line2D.new()
+			drift.width = 3.0
+			drift.default_color = snow_highlight
+			drift.points = PackedVector2Array([
+				Vector2(x - 12.0, y + 2.0),
+				Vector2(x - 4.0, y),
+				Vector2(x + 6.0, y),
+				Vector2(x + 12.0, y + 2.0)
+			])
+			ground_details.add_child(drift)
+
+			var shadow := ColorRect.new()
+			shadow.color = snow_shadow
+			shadow.position = Vector2(x - 5.0, y + 5.0)
+			shadow.size = Vector2(12.0, 2.0)
+			shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(shadow)
+
+		# Occasional small patches of exposed ice.
+		if i % 4 == 1:
+			var ice := ColorRect.new()
+			ice.color = ice_color
+			ice.position = Vector2(x - 8.0, y + 6.0)
+			ice.size = Vector2(16.0, 4.0)
+			ice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(ice)
+
+			var reflection := ColorRect.new()
+			reflection.color = snow_highlight
+			reflection.position = Vector2(3.0, 1.0)
+			reflection.size = Vector2(6.0, 1.0)
+			reflection.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ice.add_child(reflection)
+
+		# Tiny scattered snow flecks.
+		if i % 3 == 0:
+			var fleck := ColorRect.new()
+			fleck.color = snow_highlight
+			fleck.position = Vector2(x + 9.0, y + 12.0)
+			fleck.size = Vector2(4.0, 2.0)
+			fleck.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(fleck)

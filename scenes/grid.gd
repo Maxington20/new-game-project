@@ -88,7 +88,7 @@ func _draw() -> void:
 							draw_plains_tile(cell, rect.position)
 
 						Biome.SNOW:
-							pass
+							draw_snow_tile(cell, rect.position)
 				else:
 					match terrain.terrain_type:
 						TerrainResource.TerrainType.FOREST:
@@ -749,3 +749,44 @@ func draw_desert_tile(cell: Vector2i, tile_position: Vector2) -> void:
 				Rect2(tile_position + Vector2(21, 21), Vector2(3, 1)),
 				sand_highlight
 			)
+
+
+func draw_snow_tile(cell: Vector2i, tile_position: Vector2) -> void:
+	var snow_light := Color("#f0f6fa")
+	var snow_shadow := Color("#b8cad6")
+
+	# Use tile coordinates for consistent variation.
+	var pattern: int = (cell.x * 7 + cell.y * 11) % 4
+
+	if pattern == 0:
+		# Small snowdrift.
+		draw_rect(
+			Rect2(tile_position + Vector2(6, 10), Vector2(14, 3)),
+			snow_light
+		)
+		draw_rect(
+			Rect2(tile_position + Vector2(10, 13), Vector2(10, 2)),
+			snow_shadow
+		)
+
+	elif pattern == 1:
+		# Scattered ice flecks.
+		draw_rect(
+			Rect2(tile_position + Vector2(8, 7), Vector2(4, 3)),
+			snow_light
+		)
+		draw_rect(
+			Rect2(tile_position + Vector2(22, 21), Vector2(6, 2)),
+			snow_shadow
+		)
+
+	elif pattern == 2:
+		# Wind-swept snow.
+		draw_rect(
+			Rect2(tile_position + Vector2(5, 19), Vector2(18, 2)),
+			snow_light
+		)
+		draw_rect(
+			Rect2(tile_position + Vector2(14, 22), Vector2(12, 2)),
+			snow_shadow
+		)
