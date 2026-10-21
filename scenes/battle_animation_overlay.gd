@@ -1131,18 +1131,40 @@ func get_battle_terrain_color(unit: Unit) -> Color:
 	var terrain: TerrainResource = battlefield_grid.get_terrain_at(
 		unit.grid_position
 	)
+	
+	# Ground surrounding lava is scorched, regardless of biome.
+	# Lava itself keeps its own volcanic appearance.
+	if terrain == null or terrain.terrain_type != TerrainResource.TerrainType.LAVA:
+		if battlefield_grid.is_adjacent_to_lava(unit.grid_position):
+			return Color("#514943")
 
 	# Special terrain takes priority over the map's biome.
 	if terrain != null:
 		match terrain.terrain_type:
 			TerrainResource.TerrainType.FOREST:
-				return Color("#285c32")
+				match battlefield_grid.biome:
+					BattlefieldGrid.Biome.SNOW:
+						return Color("#d8e3e9")
+
+					BattlefieldGrid.Biome.DESERT:
+						return Color("#c5aa7e")
+
+					_:
+						return Color("#285c32")
 
 			TerrainResource.TerrainType.FORT:
-				return Color("#707986")
+				match battlefield_grid.biome:
+					BattlefieldGrid.Biome.DESERT:
+						return Color("#b89a6b")
+
+					BattlefieldGrid.Biome.SNOW:
+						return Color("#a8bac5")
+
+					_:
+						return Color("#707986")
 
 			TerrainResource.TerrainType.LAVA:
-				return Color("#9b3f28")
+				return Color("#51413b")
 
 	# Ordinary ground reflects the battlefield's biome.
 	match battlefield_grid.biome:
@@ -1189,6 +1211,12 @@ func add_unit_terrain_scenery(
 	var terrain: TerrainResource = battlefield_grid.get_terrain_at(
 		unit.grid_position
 	)
+	
+	# Scorched terrain replaces ordinary biome scenery.
+	# Lava tiles retain their volcanic scenery.
+	if terrain == null or terrain.terrain_type != TerrainResource.TerrainType.LAVA:
+		if battlefield_grid.is_adjacent_to_lava(unit.grid_position):
+			return
 
 	if terrain != null:
 		match terrain.terrain_type:
@@ -1219,9 +1247,12 @@ func add_unit_terrain_scenery(
 
 
 func add_forest_scenery(center: Vector2) -> void:
-	# Match the ground level used by layout_battle_screen().
 	var ground_y: float = size.y / 2.0 + 80.0
-
+	
+	if battlefield_grid.biome == BattlefieldGrid.Biome.DESERT:
+		add_desert_forest_scenery(center)
+		return
+	
 	var tree_data: Array[Dictionary] = [
 		{"offset": -110.0, "height": 75.0},
 		{"offset": -55.0, "height": 95.0},
@@ -1229,25 +1260,26 @@ func add_forest_scenery(center: Vector2) -> void:
 		{"offset": 110.0, "height": 70.0}
 	]
 
+	var is_snow: bool = battlefield_grid.biome == BattlefieldGrid.Biome.SNOW
+
 	for data in tree_data:
 		var tree_height: float = data["height"]
 		var tree_x: float = center.x + data["offset"]
 
-		# Position the tree so its trunk reaches the ground.
 		var tree_position := Vector2(
 			tree_x,
 			ground_y - tree_height
 		)
 
 		var tree := ColorRect.new()
-		tree.color = Color("#174527")
+		tree.color = Color("#244d40") if is_snow else Color("#174527")
 		tree.size = Vector2(34, tree_height - 10.0)
 		tree.position = tree_position
 		tree.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		terrain_scenery.add_child(tree)
 
 		var highlight := ColorRect.new()
-		highlight.color = Color("#327a43")
+		highlight.color = Color("#73988b") if is_snow else Color("#327a43")
 		highlight.size = Vector2(22, tree_height * 0.55)
 		highlight.position = Vector2(6, 5)
 		highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1260,16 +1292,91 @@ func add_forest_scenery(center: Vector2) -> void:
 		trunk.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tree.add_child(trunk)
 
+		if is_snow:
+			var snow_cap := ColorRect.new()
+			snow_cap.color = Color("#f0f6fa")
+			snow_cap.size = Vector2(34, 9)
+			snow_cap.position = Vector2.ZERO
+			snow_cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tree.add_child(snow_cap)
 
+			var snow_patch := ColorRect.new()
+			snow_patch.color = Color("#d8e6ed")
+			snow_patch.size = Vector2(22, 5)
+			snow_patch.position = Vector2(6, 22)
+			snow_patch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tree.add_child(snow_patch)
+
+func add_desert_forest_scenery(center: Vector2) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	var tree_data: Array[Dictionary] = [
+		{"offset": -110.0, "height": 75.0},
+		{"offset": -55.0, "height": 95.0},
+		{"offset": 55.0, "height": 85.0},
+		{"offset": 110.0, "height": 70.0}
+	]
+
+	for data in tree_data:
+		var tree_x: float = center.x + data["offset"]
+		var tree_height: float = data["height"]
+
+		# Narrow sandy-brown trunk.
+		var trunk := ColorRect.new()
+		trunk.color = Color("#94704b")
+		trunk.size = Vector2(10, tree_height)
+		trunk.position = Vector2(tree_x + 12, ground_y - tree_height)
+		trunk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		terrain_scenery.add_child(trunk)
+
+		# Palm leaves spread outward from the top.
+		var leaf_color := Color("#647b3f")
+		var leaf_highlight := Color("#91a65c")
+		var crown := Vector2(tree_x + 17, ground_y - tree_height + 6)
+
+		var leaves: Array[PackedVector2Array] = [
+			PackedVector2Array([
+				crown, crown + Vector2(-42, -12),
+				crown + Vector2(-34, 4)
+			]),
+			PackedVector2Array([
+				crown, crown + Vector2(42, -12),
+				crown + Vector2(34, 4)
+			]),
+			PackedVector2Array([
+				crown, crown + Vector2(-26, -28),
+				crown + Vector2(-10, -12)
+			]),
+			PackedVector2Array([
+				crown, crown + Vector2(26, -28),
+				crown + Vector2(10, -12)
+			])
+		]
+
+		for i in range(leaves.size()):
+			var leaf := Polygon2D.new()
+			leaf.polygon = leaves[i]
+			leaf.color = leaf_highlight if i >= 2 else leaf_color
+			terrain_scenery.add_child(leaf)
 
 func add_fort_scenery(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
 	var wall_height: float = 125.0
 	var wall_top: float = ground_y - wall_height
 
+	var wall_color := Color("#4c5865")
+	var battlement_color := Color("#788797")
+	var mortar_color := Color("#35404c")
+
+	# Desert forts use sandstone instead of grey stone.
+	if battlefield_grid.biome == BattlefieldGrid.Biome.DESERT:
+		wall_color = Color("#b89a6b")
+		battlement_color = Color("#dfc69a")
+		mortar_color = Color("#806747")
+
 	# Main stone wall.
 	var wall := ColorRect.new()
-	wall.color = Color("#4c5865")
+	wall.color = wall_color
 	wall.position = Vector2(start_x, wall_top)
 	wall.size = Vector2(section_width, wall_height)
 	wall.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1282,7 +1389,7 @@ func add_fort_scenery(start_x: float, section_width: float) -> void:
 
 	for i in range(block_count):
 		var battlement := ColorRect.new()
-		battlement.color = Color("#788797")
+		battlement.color = battlement_color
 		battlement.position = Vector2(
 			start_x + i * (block_width + block_gap) + 10.0,
 			wall_top - 24.0
@@ -1290,11 +1397,35 @@ func add_fort_scenery(start_x: float, section_width: float) -> void:
 		battlement.size = Vector2(block_width, 24)
 		battlement.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		terrain_scenery.add_child(battlement)
+		
+		# Snow collects on top of each battlement.
+		if battlefield_grid.biome == BattlefieldGrid.Biome.SNOW:
+			var snow_cap := ColorRect.new()
+			snow_cap.color = Color("#edf5f9")
+			snow_cap.position = battlement.position
+			snow_cap.size = Vector2(block_width, 7)
+			snow_cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			terrain_scenery.add_child(snow_cap)
+	# Snow settles along the exposed top of the main wall.
+	if battlefield_grid.biome == BattlefieldGrid.Biome.SNOW:
+		for i in range(block_count):
+			var snow_between := ColorRect.new()
+			snow_between.color = Color("#dce9f0")
+			snow_between.position = Vector2(
+				start_x + i * (block_width + block_gap) + 10.0 + block_width,
+				wall_top
+			)
+			snow_between.size = Vector2(
+				minf(block_gap, start_x + section_width - snow_between.position.x),
+				5.0
+			)
+			snow_between.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			terrain_scenery.add_child(snow_between)
 
 	# Horizontal mortar lines.
 	for row in range(1, 4):
 		var mortar := ColorRect.new()
-		mortar.color = Color("#35404c")
+		mortar.color = mortar_color
 		mortar.position = Vector2(
 			start_x,
 			wall_top + row * 30.0
@@ -1556,6 +1687,13 @@ func add_unit_ground_details(
 	var terrain: TerrainResource = battlefield_grid.get_terrain_at(
 		unit.grid_position
 	)
+	
+	# Scorched ground takes priority over ordinary terrain details.
+	# Lava tiles retain their existing lava decorations.
+	if terrain == null or terrain.terrain_type != TerrainResource.TerrainType.LAVA:
+		if battlefield_grid.is_adjacent_to_lava(unit.grid_position):
+			add_scorched_ground_details(start_x, section_width)
+			return
 
 	# Special terrain will get its own ground decorations later.
 	if terrain != null:
@@ -1582,7 +1720,68 @@ func add_unit_ground_details(
 		BattlefieldGrid.Biome.SNOW:
 			add_snow_ground_details(start_x, section_width)
 
+func add_scorched_ground_details(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
 
+	var crack_color := Color("#292725")
+	var ash_color := Color("#75665b")
+
+	# Short, irregular cracks across the scorched ground.
+	for i in range(9):
+		var x: float = start_x + 20.0 + float(i) * (section_width - 40.0) / 9.0
+		var y: float = ground_y + 20.0 + float((i * 37) % 85)
+
+		var crack := ColorRect.new()
+		crack.color = crack_color
+		crack.position = Vector2(x, y)
+		crack.size = Vector2(18, 3)
+		crack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ground_details.add_child(crack)
+
+		var branch := ColorRect.new()
+		branch.color = crack_color
+		branch.position = Vector2(x + 12, y + 3)
+		branch.size = Vector2(3, 9)
+		branch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ground_details.add_child(branch)
+
+	# Scattered patches of pale volcanic ash.
+	for i in range(14):
+		var ash := ColorRect.new()
+		ash.color = ash_color
+		ash.size = Vector2(5 + (i % 3) * 3, 2)
+		ash.position = Vector2(
+			start_x + 12.0 + float((i * 53) % int(maxf(section_width - 24.0, 1.0))),
+			ground_y + 12.0 + float((i * 29) % 100)
+		)
+		ash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ground_details.add_child(ash)
+		
+		# Occasional glowing embers among the scorched earth.
+	var ember_color := Color("#a65a32")
+
+	for i in range(5):
+		var ember_x: float = (
+			start_x + 35.0
+			+ float(i) * (section_width - 70.0) / 5.0
+		)
+		var ember_y: float = ground_y + 28.0 + float((i * 41) % 90)
+
+		var ember := ColorRect.new()
+		ember.color = ember_color
+		ember.position = Vector2(ember_x, ember_y)
+		ember.size = Vector2(5, 2)
+		ember.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ground_details.add_child(ember)
+
+		# A smaller glowing fragment beside some embers.
+		if i % 2 == 0:
+			var fragment := ColorRect.new()
+			fragment.color = Color("#c47a42")
+			fragment.position = Vector2(ember_x + 7, ember_y + 3)
+			fragment.size = Vector2(2, 2)
+			fragment.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ground_details.add_child(fragment)
 
 func add_grassland_ground_details(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
@@ -1787,6 +1986,18 @@ func add_fort_ground_details(start_x: float, section_width: float) -> void:
 	var stone_light := Color("#89939e")
 	var stone_dark := Color("#606a76")
 
+	# Desert forts use sandstone-coloured masonry.
+	if battlefield_grid.biome == BattlefieldGrid.Biome.DESERT:
+		mortar_color = Color("#806747")
+		stone_light = Color("#dfc69a")
+		stone_dark = Color("#a8895e")
+	
+	# Snowy forts use cold, frost-covered stone.
+	if battlefield_grid.biome == BattlefieldGrid.Biome.SNOW:
+		mortar_color = Color("#667b89")
+		stone_light = Color("#dce9f0")
+		stone_dark = Color("#9fb5c3")
+	
 	var tile_width: float = 48.0
 	var tile_height: float = 24.0
 
@@ -1830,8 +2041,6 @@ func add_fort_ground_details(start_x: float, section_width: float) -> void:
 		detail.size = Vector2(12, 3)
 		detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ground_details.add_child(detail)
-
-
 
 func style_battle_status_panels() -> void:
 	
