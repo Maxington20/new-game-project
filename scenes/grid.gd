@@ -105,8 +105,7 @@ func _draw() -> void:
 			# Draw the terrain background.
 			draw_rect(rect, color)
 			
-			if blocked_cells.has(cell):
-				draw_blocked_rock(cell, rect.position)
+			
 
 			# --------------------------------------------------
 			# TERRAIN DECORATIONS
@@ -227,6 +226,19 @@ func _draw() -> void:
 					cell,
 					Vector2(cell * CELL_SIZE)
 				)
+	# Draw blocked terrain after the ground and scorched transitions.
+	# Connected groups will eventually be rendered as one formation.
+	var rock_groups: Array[Array] = get_connected_rock_groups()
+
+	for group in rock_groups:
+		if group.size() == 1:
+			var cell: Vector2i = group[0]
+			draw_blocked_rock(
+				cell,
+				Vector2(cell * CELL_SIZE)
+			)
+		else:
+			draw_connected_rock_group(group)
 
 
 func draw_forest_tile(tile_position: Vector2) -> void:
@@ -2486,3 +2498,219 @@ func draw_blocked_rock(cell: Vector2i, tile_position: Vector2) -> void:
 			Rect2(p + Vector2(5, 23), Vector2(4, 1)),
 			Color("#f5fafc")
 		)
+
+
+
+func get_blocked_neighbors(cell: Vector2i) -> Dictionary:
+	return {
+		"up": blocked_cells.has(cell + Vector2i.UP),
+		"down": blocked_cells.has(cell + Vector2i.DOWN),
+		"left": blocked_cells.has(cell + Vector2i.LEFT),
+		"right": blocked_cells.has(cell + Vector2i.RIGHT)
+	}
+
+
+
+func get_connected_rock_groups() -> Array[Array]:
+	var groups: Array[Array] = []
+	var visited: Dictionary = {}
+
+	for start_cell in blocked_cells:
+		if visited.has(start_cell):
+			continue
+
+		var group: Array[Vector2i] = []
+		var pending: Array[Vector2i] = [start_cell]
+
+		visited[start_cell] = true
+
+		while not pending.is_empty():
+			var current: Vector2i = pending.pop_back()
+			group.append(current)
+
+			for direction in DIRECTIONS:
+				var neighbor: Vector2i = current + direction
+
+				if not blocked_cells.has(neighbor):
+					continue
+
+				if visited.has(neighbor):
+					continue
+
+				visited[neighbor] = true
+				pending.append(neighbor)
+
+		groups.append(group)
+
+	return groups
+
+
+func get_rock_group_bounds(group: Array[Vector2i]) -> Rect2i:
+	if group.is_empty():
+		return Rect2i()
+
+	var min_x: int = group[0].x
+	var min_y: int = group[0].y
+	var max_x: int = group[0].x
+	var max_y: int = group[0].y
+
+	for cell in group:
+		min_x = mini(min_x, cell.x)
+		min_y = mini(min_y, cell.y)
+		max_x = maxi(max_x, cell.x)
+		max_y = maxi(max_y, cell.y)
+
+	return Rect2i(
+		min_x * CELL_SIZE,
+		min_y * CELL_SIZE,
+		(max_x - min_x + 1) * CELL_SIZE,
+		(max_y - min_y + 1) * CELL_SIZE
+	)
+
+
+func draw_connected_rock_group(group: Array[Vector2i]) -> void:
+	if group.size() < 2:
+		return
+
+	var outline := Color("#292c30")
+	var shadow := Color("#41474a")
+	var midtone := Color("#707b7e")
+	var light := Color("#a5b0af")
+	var highlight := Color("#c9d0cd")
+
+	match biome:
+		Biome.DESERT:
+			outline = Color("#544536")
+			shadow = Color("#80654a")
+			midtone = Color("#aa8962")
+			light = Color("#d0ad7c")
+			highlight = Color("#ead0a1")
+
+		Biome.SNOW:
+			outline = Color("#394a55")
+			shadow = Color("#637b88")
+			midtone = Color("#91a9b6")
+			light = Color("#c3d5dc")
+			highlight = Color("#eef6f8")
+
+	var group_lookup: Dictionary = {}
+
+	for cell in group:
+		group_lookup[cell] = true
+
+	# Each blocked cell contributes a section of rock.
+	# Shared edges have no outer outline, making one continuous mass.
+	for cell in group:
+		var p := Vector2(cell * CELL_SIZE)
+
+		var up: bool = group_lookup.has(cell + Vector2i.UP)
+		var down: bool = group_lookup.has(cell + Vector2i.DOWN)
+		var left: bool = group_lookup.has(cell + Vector2i.LEFT)
+		var right: bool = group_lookup.has(cell + Vector2i.RIGHT)
+
+		var seed_value: int = (
+			(cell.x * 73856093) ^ (cell.y * 19349663)
+		) & 0x7fffffff
+
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed_value
+
+		# Wider, irregular silhouette.
+		# Connected sides extend to tile boundaries.
+		var top_y: float = 0.0 if up else float(rng.randi_range(5, 9))
+		var bottom_y: float = 32.0 if down else float(rng.randi_range(25, 29))
+		var left_x: float = 0.0 if left else float(rng.randi_range(2, 5))
+		var right_x: float = 32.0 if right else float(rng.randi_range(27, 30))
+
+		# Main outer silhouette.
+		draw_colored_polygon(
+			PackedVector2Array([
+				p + Vector2(left_x + 3, top_y + 2),
+				p + Vector2(13, top_y),
+				p + Vector2(right_x - 3, top_y + 3),
+				p + Vector2(right_x, 15),
+				p + Vector2(right_x - 2, bottom_y - 3),
+				p + Vector2(17, bottom_y),
+				p + Vector2(left_x + 3, bottom_y - 1),
+				p + Vector2(left_x, 18)
+			]),
+			outline
+		)
+
+		# Main stone body.
+		draw_colored_polygon(
+			PackedVector2Array([
+				p + Vector2(left_x + 3, top_y + 3),
+				p + Vector2(16, top_y + 1),
+				p + Vector2(right_x - 4, top_y + 4),
+				p + Vector2(right_x - 2, 15),
+				p + Vector2(right_x - 4, bottom_y - 4),
+				p + Vector2(16, bottom_y - 2),
+				p + Vector2(left_x + 4, bottom_y - 3),
+				p + Vector2(left_x + 2, 17)
+			]),
+			midtone
+		)
+
+		# Broad illuminated facet.
+		var facet_offset: int = rng.randi_range(-3, 3)
+
+		draw_colored_polygon(
+			PackedVector2Array([
+				p + Vector2(left_x + 4, top_y + 5),
+				p + Vector2(14 + facet_offset, top_y + 3),
+				p + Vector2(19 + facet_offset, 14),
+				p + Vector2(12 + facet_offset, 21),
+				p + Vector2(left_x + 4, 17)
+			]),
+			light
+		)
+
+		# Dark lower-right stone face.
+		draw_colored_polygon(
+			PackedVector2Array([
+				p + Vector2(19 + facet_offset, 14),
+				p + Vector2(right_x - 2, 15),
+				p + Vector2(right_x - 4, bottom_y - 4),
+				p + Vector2(16, bottom_y - 2),
+				p + Vector2(12 + facet_offset, 21)
+			]),
+			shadow
+		)
+
+		# Angular cracks with deterministic variation.
+		var crack_x: int = rng.randi_range(11, 20)
+		var crack_y: int = rng.randi_range(10, 17)
+
+		draw_line(
+			p + Vector2(crack_x, crack_y),
+			p + Vector2(crack_x + 3, crack_y + 4),
+			outline,
+			1.0
+		)
+
+		draw_line(
+			p + Vector2(crack_x + 3, crack_y + 4),
+			p + Vector2(crack_x + 1, crack_y + 8),
+			shadow,
+			1.0
+		)
+
+		# Highlights only on exposed upper edges.
+		if not up:
+			draw_line(
+				p + Vector2(left_x + 5, top_y + 2),
+				p + Vector2(13, top_y),
+				highlight,
+				1.0
+			)
+
+		# Snow accumulation on exposed upper surfaces.
+		if biome == Biome.SNOW and not up:
+			draw_rect(
+				Rect2(
+					p + Vector2(left_x + 5, top_y),
+					Vector2(12, 2)
+				),
+				Color("#f5fafc")
+			)
