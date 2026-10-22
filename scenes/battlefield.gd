@@ -1311,7 +1311,6 @@ func _load_current_encounter() -> EncounterResource:
 
 
 
-
 func _load_encounter_map(encounter: EncounterResource) -> bool:
 	if encounter == null or encounter.battlefield_scene == null:
 		push_error("Encounter has no battlefield map")
@@ -1335,10 +1334,12 @@ func _load_encounter_map(encounter: EncounterResource) -> bool:
 
 	grid = map_instance as BattlefieldGrid
 
+	# Center the battlefield after the map has been loaded.
+	center_battlefield()
+
 	print("LOADED BATTLEFIELD MAP: ", encounter.encounter_number)
 
 	return true
-
 
 
 func get_unit_terrain(unit: Unit) -> TerrainResource:
@@ -1454,3 +1455,18 @@ func _on_unit_terrain_cell_entered(
 
 	# Resume movement after terrain processing finishes.
 	unit.terrain_effect_finished.emit.call_deferred()
+
+
+func center_battlefield() -> void:
+	if grid == null:
+		return
+
+	var grid_size := Vector2(
+		grid.GRID_WIDTH * grid.CELL_SIZE,
+		grid.GRID_HEIGHT * grid.CELL_SIZE
+	)
+
+	var scaled_grid_size := grid_size * scale
+	var viewport_size := get_viewport_rect().size
+
+	position = (viewport_size - scaled_grid_size) / 2.0
