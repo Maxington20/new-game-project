@@ -36,6 +36,13 @@ position = Vector2i(7, 5)
 terrain = ExtResource("5_7eh6v")
 metadata/_custom_type_script = "uid://cuvxx7egx0eo"
 
+[sub_resource type="Resource" id="Resource_ni8wr"]
+script = ExtResource("2_lnrsu")
+position = Vector2i(7, 4)
+terrain = ExtResource("5_7eh6v")
+metadata/_custom_type_script = "uid://cuvxx7egx0eo"
+
 [node name="Grid" type="Node2D" unique_id=1665304342]
 script = ExtResource("1_3ioxg")
-terrain_cells = Array[ExtResource("2_lnrsu")]([SubResource("Resource_3xjfw"), SubResource("Resource_7eh6v"), SubResource("Resource_lo3r5"), SubResource("Resource_muchm"), SubResource("Resource_w3fun")])
+terrain_cells = Array[ExtResource("2_lnrsu")]([SubResource("Resource_3xjfw"), SubResource("Resource_7eh6v"), SubResource("Resource_lo3r5"), SubResource("Resource_muchm"), SubResource("Resource_w3fun"), SubResource("Resource_ni8wr")])
+blocked_cells = Array[Vector2i]([Vector2i(9, 4), Vector2i(9, 3), Vector2i(9, 2), Vector2i(9, 1)])

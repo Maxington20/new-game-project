@@ -98,12 +98,15 @@ func _draw() -> void:
 				if terrain_color.a > 0.0 and not scorched:
 					color = terrain_color
 
-			# Blocked terrain.
+			# Blocked cells retain the surrounding biome's ground colour.
 			if blocked_cells.has(cell):
-				color = Color("#555555")
+				color = get_biome_ground_color(cell)
 
 			# Draw the terrain background.
 			draw_rect(rect, color)
+			
+			if blocked_cells.has(cell):
+				draw_blocked_rock(cell, rect.position)
 
 			# --------------------------------------------------
 			# TERRAIN DECORATIONS
@@ -2329,3 +2332,157 @@ func draw_snow_tile(cell: Vector2i, tile_position: Vector2) -> void:
 		_:
 			# Most snow tiles remain untouched.
 			pass
+
+
+func draw_blocked_rock(cell: Vector2i, tile_position: Vector2) -> void:
+	var outline := Color("#292c30")
+	var shadow := Color("#41474a")
+	var midtone := Color("#707b7e")
+	var light := Color("#a5b0af")
+	var highlight := Color("#c9d0cd")
+
+	match biome:
+		Biome.DESERT:
+			outline = Color("#544536")
+			shadow = Color("#80654a")
+			midtone = Color("#aa8962")
+			light = Color("#d0ad7c")
+			highlight = Color("#ead0a1")
+
+		Biome.SNOW:
+			outline = Color("#394a55")
+			shadow = Color("#637b88")
+			midtone = Color("#91a9b6")
+			light = Color("#c3d5dc")
+			highlight = Color("#eef6f8")
+
+	# Small deterministic variation between rocks.
+	var variation: int = (
+		(cell.x * 73856093) ^ (cell.y * 19349663)
+	) & 0x7fffffff
+
+	var offset_x: int = variation % 3 - 1
+
+	var p := tile_position + Vector2(offset_x, 0)
+
+	# Ground shadow.
+	draw_rect(
+		Rect2(p + Vector2(3, 27), Vector2(26, 3)),
+		Color(outline, 0.35)
+	)
+
+	# Main rock: dark angular silhouette.
+	draw_colored_polygon(
+		PackedVector2Array([
+			p + Vector2(3, 25),
+			p + Vector2(4, 16),
+			p + Vector2(9, 10),
+			p + Vector2(16, 7),
+			p + Vector2(23, 11),
+			p + Vector2(28, 18),
+			p + Vector2(29, 25),
+			p + Vector2(25, 28),
+			p + Vector2(7, 28)
+		]),
+		outline
+	)
+
+	# Lower shaded face.
+	draw_colored_polygon(
+		PackedVector2Array([
+			p + Vector2(5, 19),
+			p + Vector2(13, 17),
+			p + Vector2(23, 19),
+			p + Vector2(27, 25),
+			p + Vector2(24, 27),
+			p + Vector2(8, 27)
+		]),
+		shadow
+	)
+
+	# Main illuminated rock face.
+	draw_colored_polygon(
+		PackedVector2Array([
+			p + Vector2(5, 18),
+			p + Vector2(10, 11),
+			p + Vector2(16, 8),
+			p + Vector2(22, 12),
+			p + Vector2(25, 18),
+			p + Vector2(19, 22),
+			p + Vector2(11, 21)
+		]),
+		midtone
+	)
+
+	# Upper-left light plane.
+	draw_colored_polygon(
+		PackedVector2Array([
+			p + Vector2(6, 17),
+			p + Vector2(10, 11),
+			p + Vector2(16, 9),
+			p + Vector2(15, 16),
+			p + Vector2(11, 20)
+		]),
+		light
+	)
+
+	# Small bright edge.
+	draw_line(
+		p + Vector2(10, 11),
+		p + Vector2(16, 9),
+		highlight,
+		1.0
+	)
+
+	# Angular fracture.
+	draw_line(
+		p + Vector2(16, 16),
+		p + Vector2(20, 20),
+		shadow,
+		1.0
+	)
+	draw_line(
+		p + Vector2(20, 20),
+		p + Vector2(18, 24),
+		outline,
+		1.0
+	)
+
+	# Smaller foreground stone.
+	draw_colored_polygon(
+		PackedVector2Array([
+			p + Vector2(2, 27),
+			p + Vector2(4, 23),
+			p + Vector2(8, 21),
+			p + Vector2(12, 24),
+			p + Vector2(13, 28),
+			p + Vector2(4, 29)
+		]),
+		outline
+	)
+
+	draw_colored_polygon(
+		PackedVector2Array([
+			p + Vector2(4, 26),
+			p + Vector2(5, 23),
+			p + Vector2(8, 22),
+			p + Vector2(11, 25),
+			p + Vector2(10, 27)
+		]),
+		light
+	)
+
+	# Snow resting on the rock's upper surfaces.
+	if biome == Biome.SNOW:
+		draw_rect(
+			Rect2(p + Vector2(12, 8), Vector2(6, 2)),
+			Color("#f5fafc")
+		)
+		draw_rect(
+			Rect2(p + Vector2(9, 10), Vector2(5, 1)),
+			Color("#e3f0f5")
+		)
+		draw_rect(
+			Rect2(p + Vector2(5, 23), Vector2(4, 1)),
+			Color("#f5fafc")
+		)

@@ -4,7 +4,7 @@ extends Node
 
 func _ready() -> void:
 	var run := RunState.new()
-	run.current_encounter = 3
+	run.current_encounter = 1
 
 	var roster: CharacterRoster = load(
 		"res://resources/rosters/default_roster.tres"
