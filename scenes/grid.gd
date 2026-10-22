@@ -58,7 +58,7 @@ func _draw() -> void:
 
 			# Base ground colour depends on the map's biome.
 			var color: Color = get_biome_ground_color(cell)
-			
+
 			# Subtle, deterministic snow surface variation.
 			if biome == Biome.SNOW:
 				var snow_variation: int = (
@@ -91,12 +91,25 @@ func _draw() -> void:
 			if scorched:
 				color = Color("#514943")
 
-			# Special terrain colours.
-			if terrain != null:
-				var terrain_color := get_terrain_color(terrain)
+			# --------------------------------------------------
+			# SPECIAL TERRAIN COLOURS
+			# --------------------------------------------------
 
-				if terrain_color.a > 0.0 and not scorched:
-					color = terrain_color
+			if terrain != null and not scorched:
+				match terrain.terrain_type:
+					TerrainResource.TerrainType.FOREST:
+						# Forests use the same ground colour as
+						# the surrounding biome.
+						# Only the trees themselves remain dark.
+						pass
+
+					_:
+						# Preserve existing colours for forts,
+						# lava, and other special terrain.
+						var terrain_color := get_terrain_color(terrain)
+
+						if terrain_color.a > 0.0:
+							color = terrain_color
 
 			# Blocked cells retain the surrounding biome's ground colour.
 			if blocked_cells.has(cell):
@@ -104,8 +117,6 @@ func _draw() -> void:
 
 			# Draw the terrain background.
 			draw_rect(rect, color)
-			
-			
 
 			# --------------------------------------------------
 			# TERRAIN DECORATIONS
@@ -130,13 +141,20 @@ func _draw() -> void:
 				else:
 					match terrain.terrain_type:
 						TerrainResource.TerrainType.FOREST:
-							match biome:
-								Biome.SNOW:
-									draw_snow_tile(cell, rect.position)
+							# Draw normal biome ground details beneath
+							# the trees so the forest blends in.
+							if not scorched:
+								match biome:
+									Biome.GRASSLAND:
+										draw_plains_tile(cell, rect.position)
 
-								Biome.DESERT:
-									draw_desert_tile(cell, rect.position)
+									Biome.DESERT:
+										draw_desert_tile(cell, rect.position)
 
+									Biome.SNOW:
+										draw_snow_tile(cell, rect.position)
+
+							# Preserve the existing tree artwork.
 							draw_forest_tile(rect.position)
 
 						TerrainResource.TerrainType.FORT:
@@ -210,6 +228,11 @@ func _draw() -> void:
 					false,
 					3.0
 				)
+
+	# --------------------------------------------------
+	# SCORCHED TERRAIN TRANSITIONS
+	# --------------------------------------------------
+
 	# Draw scorched transitions after the underlying biome terrain.
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
@@ -226,13 +249,18 @@ func _draw() -> void:
 					cell,
 					Vector2(cell * CELL_SIZE)
 				)
+
+	# --------------------------------------------------
+	# BLOCKED TERRAIN / ROCK FORMATIONS
+	# --------------------------------------------------
+
 	# Draw blocked terrain after the ground and scorched transitions.
-	# Connected groups will eventually be rendered as one formation.
 	var rock_groups: Array[Array] = get_connected_rock_groups()
 
 	for group in rock_groups:
 		if group.size() == 1:
 			var cell: Vector2i = group[0]
+
 			draw_blocked_rock(
 				cell,
 				Vector2(cell * CELL_SIZE)
@@ -2593,46 +2621,131 @@ func draw_connected_rock_group(group: Array[Vector2i]) -> void:
 			light = Color("#c3d5dc")
 			highlight = Color("#eef6f8")
 
-	var group_lookup: Dictionary = {}
+	# Sort cells so the appearance does not depend on
+	# the order returned by the flood-fill algorithm.
+	var cells: Array[Vector2i] = group.duplicate()
+	cells.sort_custom(
+		func(a: Vector2i, b: Vector2i) -> bool:
+			if a.y == b.y:
+				return a.x < b.x
+			return a.y < b.y
+	)
 
-	for cell in group:
-		group_lookup[cell] = true
+	var lookup: Dictionary = {}
+	for cell in cells:
+		lookup[cell] = true
 
-	# Each blocked cell contributes a section of rock.
-	# Shared edges have no outer outline, making one continuous mass.
-	for cell in group:
+	# Deterministic random values keep the rocks stationary.
+	var rng := RandomNumberGenerator.new()
+	var bounds := get_rock_group_bounds(cells)
+
+	rng.seed = (
+		(bounds.position.x * 73856093)
+		^ (bounds.position.y * 19349663)
+		^ (cells.size() * 83492791)
+	) & 0x7fffffff
+
+	# --------------------------------------------------
+	# ROCKS BRIDGING ADJACENT CELLS
+	# --------------------------------------------------
+
+	# Draw connecting stones first, so larger boulders
+	# overlap them and hide the joins.
+	for cell in cells:
 		var p := Vector2(cell * CELL_SIZE)
 
-		var up: bool = group_lookup.has(cell + Vector2i.UP)
-		var down: bool = group_lookup.has(cell + Vector2i.DOWN)
-		var left: bool = group_lookup.has(cell + Vector2i.LEFT)
-		var right: bool = group_lookup.has(cell + Vector2i.RIGHT)
+		for direction in [Vector2i.RIGHT, Vector2i.DOWN]:
+			var neighbor: Vector2i = cell + direction
 
-		var seed_value: int = (
-			(cell.x * 73856093) ^ (cell.y * 19349663)
-		) & 0x7fffffff
+			if not lookup.has(neighbor):
+				continue
 
-		var rng := RandomNumberGenerator.new()
-		rng.seed = seed_value
+			var center: Vector2
 
-		# Wider, irregular silhouette.
-		# Connected sides extend to tile boundaries.
-		var top_y: float = 0.0 if up else float(rng.randi_range(5, 9))
-		var bottom_y: float = 32.0 if down else float(rng.randi_range(25, 29))
-		var left_x: float = 0.0 if left else float(rng.randi_range(2, 5))
-		var right_x: float = 32.0 if right else float(rng.randi_range(27, 30))
+			if direction == Vector2i.RIGHT:
+				center = p + Vector2(32, 16)
+			else:
+				center = p + Vector2(16, 32)
 
-		# Main outer silhouette.
+			var bridge_width: float = float(rng.randi_range(15, 22))
+			var bridge_height: float = float(rng.randi_range(14, 21))
+
+			var left_x := center.x - bridge_width * 0.5
+			var right_x := center.x + bridge_width * 0.5
+			var top_y := center.y - bridge_height * 0.5
+			var bottom_y := center.y + bridge_height * 0.5
+
+			# Dark outer silhouette.
+			draw_colored_polygon(
+				PackedVector2Array([
+					Vector2(left_x + 3, top_y),
+					Vector2(right_x - 4, top_y + 1),
+					Vector2(right_x, top_y + 5),
+					Vector2(right_x - 1, bottom_y - 3),
+					Vector2(right_x - 5, bottom_y),
+					Vector2(left_x + 2, bottom_y - 1),
+					Vector2(left_x, bottom_y - 5),
+					Vector2(left_x + 1, top_y + 4)
+				]),
+				outline
+			)
+
+			# Main stone surface.
+			draw_colored_polygon(
+				PackedVector2Array([
+					Vector2(left_x + 3, top_y + 2),
+					Vector2(right_x - 5, top_y + 3),
+					Vector2(right_x - 2, top_y + 6),
+					Vector2(right_x - 4, bottom_y - 3),
+					Vector2(left_x + 3, bottom_y - 3),
+					Vector2(left_x + 2, top_y + 6)
+				]),
+				midtone
+			)
+
+			# Illuminated upper-left face.
+			draw_colored_polygon(
+				PackedVector2Array([
+					Vector2(left_x + 3, top_y + 2),
+					Vector2(center.x, top_y + 2),
+					Vector2(center.x - 2, center.y),
+					Vector2(left_x + 3, center.y + 2)
+				]),
+				light
+			)
+
+	# --------------------------------------------------
+	# MAIN BOULDERS
+	# --------------------------------------------------
+
+	# Each cell gets a differently sized boulder.
+	# The shapes overlap the connecting stones.
+	for cell in cells:
+		var p := Vector2(cell * CELL_SIZE)
+
+		var center_x: float = p.x + float(rng.randi_range(13, 19))
+		var center_y: float = p.y + float(rng.randi_range(13, 19))
+
+		var radius_x: float = float(rng.randi_range(11, 15))
+		var radius_y: float = float(rng.randi_range(11, 15))
+
+		var left_x: float = center_x - radius_x
+		var right_x: float = center_x + radius_x
+		var top_y: float = center_y - radius_y
+		var bottom_y: float = center_y + radius_y
+
+		# Angular outer silhouette.
 		draw_colored_polygon(
 			PackedVector2Array([
-				p + Vector2(left_x + 3, top_y + 2),
-				p + Vector2(13, top_y),
-				p + Vector2(right_x - 3, top_y + 3),
-				p + Vector2(right_x, 15),
-				p + Vector2(right_x - 2, bottom_y - 3),
-				p + Vector2(17, bottom_y),
-				p + Vector2(left_x + 3, bottom_y - 1),
-				p + Vector2(left_x, 18)
+				Vector2(left_x + 4, top_y),
+				Vector2(center_x + 2, top_y - 1),
+				Vector2(right_x - 3, top_y + 4),
+				Vector2(right_x, center_y - 2),
+				Vector2(right_x - 2, bottom_y - 4),
+				Vector2(center_x + 3, bottom_y),
+				Vector2(left_x + 3, bottom_y - 2),
+				Vector2(left_x, center_y + 2),
+				Vector2(left_x + 1, top_y + 5)
 			]),
 			outline
 		)
@@ -2640,77 +2753,136 @@ func draw_connected_rock_group(group: Array[Vector2i]) -> void:
 		# Main stone body.
 		draw_colored_polygon(
 			PackedVector2Array([
-				p + Vector2(left_x + 3, top_y + 3),
-				p + Vector2(16, top_y + 1),
-				p + Vector2(right_x - 4, top_y + 4),
-				p + Vector2(right_x - 2, 15),
-				p + Vector2(right_x - 4, bottom_y - 4),
-				p + Vector2(16, bottom_y - 2),
-				p + Vector2(left_x + 4, bottom_y - 3),
-				p + Vector2(left_x + 2, 17)
+				Vector2(left_x + 4, top_y + 2),
+				Vector2(center_x + 1, top_y + 1),
+				Vector2(right_x - 4, top_y + 5),
+				Vector2(right_x - 2, center_y),
+				Vector2(right_x - 4, bottom_y - 4),
+				Vector2(center_x + 2, bottom_y - 2),
+				Vector2(left_x + 4, bottom_y - 4),
+				Vector2(left_x + 2, center_y + 1)
 			]),
 			midtone
 		)
 
-		# Broad illuminated facet.
-		var facet_offset: int = rng.randi_range(-3, 3)
-
+		# Large illuminated upper-left facet.
 		draw_colored_polygon(
 			PackedVector2Array([
-				p + Vector2(left_x + 4, top_y + 5),
-				p + Vector2(14 + facet_offset, top_y + 3),
-				p + Vector2(19 + facet_offset, 14),
-				p + Vector2(12 + facet_offset, 21),
-				p + Vector2(left_x + 4, 17)
+				Vector2(left_x + 4, top_y + 3),
+				Vector2(center_x, top_y + 2),
+				Vector2(center_x + 4, center_y - 3),
+				Vector2(center_x - 3, center_y + 3),
+				Vector2(left_x + 3, center_y)
 			]),
 			light
 		)
 
-		# Dark lower-right stone face.
+		# Darker lower-right facet.
 		draw_colored_polygon(
 			PackedVector2Array([
-				p + Vector2(19 + facet_offset, 14),
-				p + Vector2(right_x - 2, 15),
-				p + Vector2(right_x - 4, bottom_y - 4),
-				p + Vector2(16, bottom_y - 2),
-				p + Vector2(12 + facet_offset, 21)
+				Vector2(center_x + 4, center_y - 3),
+				Vector2(right_x - 2, center_y),
+				Vector2(right_x - 4, bottom_y - 4),
+				Vector2(center_x + 2, bottom_y - 2),
+				Vector2(center_x - 3, center_y + 3)
 			]),
 			shadow
 		)
 
-		# Angular cracks with deterministic variation.
-		var crack_x: int = rng.randi_range(11, 20)
-		var crack_y: int = rng.randi_range(10, 17)
-
+		# Small top highlight.
 		draw_line(
-			p + Vector2(crack_x, crack_y),
-			p + Vector2(crack_x + 3, crack_y + 4),
-			outline,
+			Vector2(left_x + 5, top_y + 3),
+			Vector2(center_x, top_y + 2),
+			highlight,
 			1.0
 		)
 
-		draw_line(
-			p + Vector2(crack_x + 3, crack_y + 4),
-			p + Vector2(crack_x + 1, crack_y + 8),
-			shadow,
-			1.0
-		)
+		# Occasional fracture.
+		if rng.randf() < 0.65:
+			var crack_start := Vector2(
+				center_x + rng.randi_range(-3, 3),
+				center_y + rng.randi_range(-3, 1)
+			)
 
-		# Highlights only on exposed upper edges.
-		if not up:
 			draw_line(
-				p + Vector2(left_x + 5, top_y + 2),
-				p + Vector2(13, top_y),
-				highlight,
+				crack_start,
+				crack_start + Vector2(3, 4),
+				outline,
 				1.0
 			)
 
-		# Snow accumulation on exposed upper surfaces.
-		if biome == Biome.SNOW and not up:
+			draw_line(
+				crack_start + Vector2(3, 4),
+				crack_start + Vector2(1, 7),
+				shadow,
+				1.0
+			)
+
+	# --------------------------------------------------
+	# SMALLER STONES BETWEEN THE BOULDERS
+	# --------------------------------------------------
+
+	# A few smaller rocks break up the repeated shapes.
+	for cell in cells:
+		if rng.randf() > 0.55:
+			continue
+
+		var p := Vector2(cell * CELL_SIZE)
+
+		var sx: float = p.x + float(rng.randi_range(5, 20))
+		var sy: float = p.y + float(rng.randi_range(20, 26))
+
+		draw_colored_polygon(
+			PackedVector2Array([
+				Vector2(sx, sy + 4),
+				Vector2(sx + 3, sy),
+				Vector2(sx + 9, sy - 1),
+				Vector2(sx + 13, sy + 3),
+				Vector2(sx + 11, sy + 7),
+				Vector2(sx + 2, sy + 7)
+			]),
+			outline
+		)
+
+		draw_colored_polygon(
+			PackedVector2Array([
+				Vector2(sx + 2, sy + 4),
+				Vector2(sx + 4, sy + 1),
+				Vector2(sx + 8, sy),
+				Vector2(sx + 11, sy + 3),
+				Vector2(sx + 9, sy + 5),
+				Vector2(sx + 3, sy + 5)
+			]),
+			light
+		)
+
+	# --------------------------------------------------
+	# SNOW ACCUMULATION
+	# --------------------------------------------------
+
+	if biome == Biome.SNOW:
+		var snow_light := Color("#f5fafc")
+		var snow_shadow := Color("#dceaf2")
+
+		for cell in cells:
+			var p := Vector2(cell * CELL_SIZE)
+
+			# Only place snow on rocks with no rock directly above.
+			if lookup.has(cell + Vector2i.UP):
+				continue
+
 			draw_rect(
 				Rect2(
-					p + Vector2(left_x + 5, top_y),
+					p + Vector2(10, 3),
 					Vector2(12, 2)
 				),
-				Color("#f5fafc")
+				snow_shadow
+			)
+
+			draw_rect(
+				Rect2(
+					p + Vector2(12, 3),
+					Vector2(8, 1)
+				),
+				snow_light
 			)

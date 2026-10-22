@@ -41,7 +41,11 @@ var current_hp: int = 0:
 			current_hp = value
 			
 var is_moving: bool = false
-var has_acted: bool = false
+var has_acted: bool = false:
+	set(value):
+		has_acted = value
+		self_modulate = Color(1, 1, 1, 0.5) if value else Color.WHITE
+		queue_redraw()
 var took_terrain_damage: bool = false
 var run_state: RunUnitState
 
@@ -147,9 +151,6 @@ func promote_with_choice(
 func _draw() -> void:
 	var color := PLAYER_COLOR if team == Team.PLAYER else ENEMY_COLOR
 
-	if has_acted:
-		color = color.darkened(0.5)
-
 	if unit_data != null and unit_data.unit_class != null:
 		match unit_data.unit_class.class_name_display.to_lower():
 			"knight":
@@ -165,23 +166,30 @@ func _draw() -> void:
 				draw_fighter()
 				return
 
-	# Existing square-and-letter appearance for other classes.
-	var rect := Rect2(Vector2(4, 4), Vector2(CELL_SIZE - 8, CELL_SIZE - 8))
+	# Square-and-letter appearance for other classes.
+	var rect := Rect2(
+		Vector2(4, 4),
+		Vector2(CELL_SIZE - 8, CELL_SIZE - 8)
+	)
+
 	draw_rect(rect, color)
 
 	var class_letter := get_class_letter()
 	var font := ThemeDB.fallback_font
 	var font_size := 16
+
 	var text_size := font.get_string_size(
 		class_letter,
 		HORIZONTAL_ALIGNMENT_LEFT,
 		-1,
 		font_size
 	)
+
 	var text_position := Vector2(
 		(CELL_SIZE - text_size.x) / 2.0,
 		(CELL_SIZE + text_size.y) / 2.0 - 3.0
 	)
+
 	draw_string(
 		font,
 		text_position,
@@ -454,13 +462,6 @@ func draw_fighter() -> void:
 
 	# Reset drawing transform.
 	draw_set_transform(Vector2.ZERO)
-
-	# Dim the character after acting.
-	if has_acted:
-		draw_rect(
-			Rect2(Vector2.ZERO, Vector2(CELL_SIZE, CELL_SIZE)),
-			Color(0, 0, 0, 0.45)
-		)
 
 
 func draw_swordsman() -> void:
@@ -812,12 +813,6 @@ func draw_swordsman() -> void:
 	# ACTED-STATE DIMMING
 	# --------------------------------------------------
 
-	if has_acted:
-		draw_rect(
-			Rect2(Vector2.ZERO, Vector2(CELL_SIZE, CELL_SIZE)),
-			Color(0, 0, 0, 0.45)
-		)
-
 func draw_archer() -> void:
 	var outline := Color("#302b29")
 	var leather := Color("#765238")
@@ -1162,16 +1157,6 @@ func draw_archer() -> void:
 	draw_rect(Rect2(5, 19, 5, 4), outline)
 	draw_rect(Rect2(6, 20, 3, 2), skin)
 	draw_rect(Rect2(8, 21, 1, 1), skin_shadow)
-
-	# --------------------------------------------------
-	# ACTED-STATE DIMMING
-	# --------------------------------------------------
-
-	if has_acted:
-		draw_rect(
-			Rect2(Vector2.ZERO, Vector2(CELL_SIZE, CELL_SIZE)),
-			Color(0, 0, 0, 0.45)
-		)
 
 
 func draw_knight() -> void:
@@ -1559,15 +1544,6 @@ func draw_knight() -> void:
 	draw_rect(Rect2(9, 28, 3, 1), armor_light)
 	draw_rect(Rect2(19, 28, 3, 1), armor_light)
 
-	# --------------------------------------------------
-	# ACTED-STATE DIMMING
-	# --------------------------------------------------
-
-	if has_acted:
-		draw_rect(
-			Rect2(Vector2.ZERO, Vector2(CELL_SIZE, CELL_SIZE)),
-			Color(0, 0, 0, 0.45)
-		)
 
 func get_class_letter() -> String:
 	if unit_data == null or unit_data.unit_class == null:

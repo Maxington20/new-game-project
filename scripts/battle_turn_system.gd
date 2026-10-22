@@ -24,11 +24,16 @@ func start_phase(team: Unit.Team) -> void:
 			continue
 
 		if unit.team == current_team:
+			# Units on the active team can act again.
 			unit.has_acted = false
-			unit.queue_redraw()
+
+		elif current_team == Unit.Team.PLAYER:
+			# At the beginning of the player phase,
+			# restore enemy sprites without resetting
+			# their gameplay action state.
+			unit.self_modulate = Color.WHITE
 
 	phase_changed.emit(current_team)
-
 
 func end_phase() -> void:
 	if current_team == Unit.Team.PLAYER:
