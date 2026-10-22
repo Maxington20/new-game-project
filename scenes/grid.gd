@@ -58,6 +58,24 @@ func _draw() -> void:
 
 			# Base ground colour depends on the map's biome.
 			var color: Color = get_biome_ground_color(cell)
+			
+			# Subtle, deterministic snow surface variation.
+			if biome == Biome.SNOW:
+				var snow_variation: int = (
+					(x / 3) * 7 + (y / 3) * 11
+				) % 5
+
+				match snow_variation:
+					0:
+						color = Color("#e5f0f5")
+					1:
+						color = Color("#dae8ef")
+					2:
+						color = Color("#d3e3ec")
+					3:
+						color = Color("#dfedf3")
+					_:
+						color = Color("#e1edf3")
 
 			# Lava scorches the surrounding ground.
 			# This is visual only; gameplay properties remain unchanged.
@@ -94,7 +112,6 @@ func _draw() -> void:
 			if not blocked_cells.has(cell):
 				if scorched:
 					draw_scorched_tile(cell, rect.position)
-					draw_scorched_edges(cell, rect.position)
 
 				if terrain == null or terrain.terrain_type == TerrainResource.TerrainType.PLAINS:
 					if not scorched:
@@ -191,12 +208,28 @@ func _draw() -> void:
 					false,
 					3.0
 				)
+	# Draw scorched transitions after the underlying biome terrain.
+	for y in range(GRID_HEIGHT):
+		for x in range(GRID_WIDTH):
+			var cell := Vector2i(x, y)
+
+			if is_adjacent_to_lava(cell):
+				var terrain := get_terrain_at(cell)
+
+				if terrain != null:
+					if terrain.terrain_type == TerrainResource.TerrainType.LAVA:
+						continue
+
+				draw_scorched_edges(
+					cell,
+					Vector2(cell * CELL_SIZE)
+				)
 
 
 func draw_forest_tile(tile_position: Vector2) -> void:
 	if biome == Biome.DESERT:
-		draw_desert_palm(tile_position + Vector2(4, 3))
-		draw_desert_palm(tile_position + Vector2(17, 10))
+		draw_desert_palm(tile_position + Vector2(2, 3))
+		draw_desert_palm(tile_position + Vector2(13, 10))
 		return
 
 	var ground_shadow := Color("#416d40", 0.35)
@@ -226,36 +259,214 @@ func draw_forest_tile(tile_position: Vector2) -> void:
 	draw_pixel_tree(tile_position + Vector2(8, 11), 1.0)
 
 func draw_desert_palm(position: Vector2) -> void:
-	var trunk_color := Color("#85603c")
-	var leaf_dark := Color("#587346")
-	var leaf_light := Color("#87975b")
+	var outline := Color("#34372c")
 
-	# Narrow palm trunk.
+	var trunk_dark := Color("#65472f")
+	var trunk_mid := Color("#987047")
+	var trunk_light := Color("#c49a62")
+
+	var leaf_shadow := Color("#354d32")
+	var leaf_dark := Color("#4c7040")
+	var leaf_mid := Color("#64864b")
+	var leaf_light := Color("#94a965")
+	var leaf_highlight := Color("#b4c47d")
+
+	# Ground shadow.
 	draw_rect(
-		Rect2(position + Vector2(6, 7), Vector2(3, 12)),
-		trunk_color
+		Rect2(position + Vector2(3, 18), Vector2(12, 2)),
+		Color("#8c7855", 0.45)
 	)
 
-	# Palm fronds spreading outward.
+	# --------------------------------------------------
+	# CURVED PALM TRUNK
+	# --------------------------------------------------
+
+	# Dark outer silhouette.
+	draw_colored_polygon(
+		PackedVector2Array([
+			position + Vector2(6, 19),
+			position + Vector2(10, 19),
+			position + Vector2(10, 13),
+			position + Vector2(12, 8),
+			position + Vector2(11, 5),
+			position + Vector2(8, 5),
+			position + Vector2(9, 9),
+			position + Vector2(7, 13)
+		]),
+		outline
+	)
+
+	# Main trunk.
+	draw_colored_polygon(
+		PackedVector2Array([
+			position + Vector2(7, 18),
+			position + Vector2(9, 18),
+			position + Vector2(9, 13),
+			position + Vector2(11, 8),
+			position + Vector2(10, 6),
+			position + Vector2(9, 6),
+			position + Vector2(10, 9),
+			position + Vector2(8, 13)
+		]),
+		trunk_mid
+	)
+
+	# Shaded side.
 	draw_rect(
-		Rect2(position + Vector2(2, 4), Vector2(12, 3)),
+		Rect2(position + Vector2(7, 14), Vector2(1, 4)),
+		trunk_dark
+	)
+
+	# Sunlit trunk edge.
+	draw_line(
+		position + Vector2(9, 10),
+		position + Vector2(8, 16),
+		trunk_light,
+		1.0
+	)
+
+	# Bark bands.
+	draw_line(
+		position + Vector2(7, 15),
+		position + Vector2(9, 15),
+		trunk_dark,
+		1.0
+	)
+
+	draw_line(
+		position + Vector2(8, 12),
+		position + Vector2(10, 12),
+		trunk_dark,
+		1.0
+	)
+
+	# --------------------------------------------------
+	# PALM FRONDS
+	# --------------------------------------------------
+
+	# Left frond, dark silhouette.
+	draw_colored_polygon(
+		PackedVector2Array([
+			position + Vector2(10, 5),
+			position + Vector2(6, 3),
+			position + Vector2(2, 4),
+			position + Vector2(0, 8),
+			position + Vector2(3, 7),
+			position + Vector2(5, 6),
+			position + Vector2(8, 7)
+		]),
+		outline
+	)
+
+	draw_colored_polygon(
+		PackedVector2Array([
+			position + Vector2(9, 5),
+			position + Vector2(6, 4),
+			position + Vector2(3, 5),
+			position + Vector2(1, 7),
+			position + Vector2(5, 6),
+			position + Vector2(8, 6)
+		]),
+		leaf_mid
+	)
+
+	# Right frond.
+	draw_colored_polygon(
+		PackedVector2Array([
+			position + Vector2(10, 5),
+			position + Vector2(14, 3),
+			position + Vector2(17, 5),
+			position + Vector2(18, 9),
+			position + Vector2(15, 7),
+			position + Vector2(13, 6),
+			position + Vector2(10, 7)
+		]),
+		outline
+	)
+
+	draw_colored_polygon(
+		PackedVector2Array([
+			position + Vector2(10, 5),
+			position + Vector2(14, 4),
+			position + Vector2(16, 5),
+			position + Vector2(17, 8),
+			position + Vector2(13, 6)
+		]),
 		leaf_dark
 	)
 
-	draw_rect(
-		Rect2(position + Vector2(0, 6), Vector2(5, 3)),
-		leaf_dark
+	# Upright central frond.
+	draw_colored_polygon(
+		PackedVector2Array([
+			position + Vector2(8, 6),
+			position + Vector2(7, 2),
+			position + Vector2(10, 0),
+			position + Vector2(13, 2),
+			position + Vector2(12, 6)
+		]),
+		outline
 	)
 
-	draw_rect(
-		Rect2(position + Vector2(11, 6), Vector2(5, 3)),
-		leaf_dark
-	)
-
-	# Lighter upper leaves.
-	draw_rect(
-		Rect2(position + Vector2(5, 2), Vector2(6, 4)),
+	draw_colored_polygon(
+		PackedVector2Array([
+			position + Vector2(9, 5),
+			position + Vector2(8, 2),
+			position + Vector2(10, 1),
+			position + Vector2(12, 2),
+			position + Vector2(11, 5)
+		]),
 		leaf_light
+	)
+
+	# Hanging left leaf tips.
+	draw_rect(
+		Rect2(position + Vector2(1, 7), Vector2(2, 3)),
+		leaf_shadow
+	)
+
+	draw_rect(
+		Rect2(position + Vector2(4, 6), Vector2(2, 3)),
+		leaf_dark
+	)
+
+	# Hanging right leaf tips.
+	draw_rect(
+		Rect2(position + Vector2(15, 7), Vector2(2, 3)),
+		leaf_shadow
+	)
+
+	draw_rect(
+		Rect2(position + Vector2(13, 6), Vector2(2, 3)),
+		leaf_dark
+	)
+
+	# --------------------------------------------------
+	# CEL-SHADED HIGHLIGHTS
+	# --------------------------------------------------
+
+	draw_line(
+		position + Vector2(4, 5),
+		position + Vector2(8, 5),
+		leaf_light,
+		1.0
+	)
+
+	draw_line(
+		position + Vector2(11, 4),
+		position + Vector2(14, 4),
+		leaf_highlight,
+		1.0
+	)
+
+	draw_rect(
+		Rect2(position + Vector2(9, 3), Vector2(2, 2)),
+		leaf_highlight
+	)
+
+	# Central crown shadow.
+	draw_rect(
+		Rect2(position + Vector2(8, 6), Vector2(4, 2)),
+		leaf_shadow
 	)
 
 func draw_pixel_tree(
@@ -1447,7 +1658,17 @@ func draw_scorched_edges(cell: Vector2i, tile_position: Vector2) -> void:
 	var ash_dark := Color("#302d2b")
 	var ash_mid := Color("#514943")
 	var ash_light := Color("#75675a")
-	var burnt_grass := Color("#65734f")
+
+	# Match the surrounding terrain instead of always using green.
+	var edge_terrain_color: Color
+
+	match biome:
+		Biome.GRASSLAND:
+			edge_terrain_color = Color("#65734f")
+		Biome.DESERT:
+			edge_terrain_color = Color("#b7a077")
+		Biome.SNOW:
+			edge_terrain_color = Color("#dceaf2")
 
 	for direction in DIRECTIONS:
 		var neighbor := cell + direction
@@ -1477,9 +1698,7 @@ func draw_scorched_edges(cell: Vector2i, tile_position: Vector2) -> void:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = seed_value
 
-		# Draw patches of dying grass and lighter ash
-		# along the INNER edge of the scorched tile.
-		# This breaks up the solid rectangular boundary.
+		# Irregular patches along the inner scorched boundary.
 		for i in range(7):
 			var along := rng.randi_range(0, 28)
 			var depth := rng.randi_range(2, 9)
@@ -1516,7 +1735,7 @@ func draw_scorched_edges(cell: Vector2i, tile_position: Vector2) -> void:
 
 			match i % 4:
 				0:
-					patch_color = burnt_grass
+					patch_color = edge_terrain_color
 				1:
 					patch_color = ash_light
 				2:
@@ -1529,8 +1748,7 @@ func draw_scorched_edges(cell: Vector2i, tile_position: Vector2) -> void:
 				patch_color
 			)
 
-		# Small irregular notches of burnt grass
-		# along the edge facing healthy ground.
+		# Small irregular notches matching the surrounding biome.
 		for i in range(4):
 			var offset := rng.randi_range(2, 27)
 			var notch_length := rng.randi_range(2, 5)
@@ -1542,7 +1760,7 @@ func draw_scorched_edges(cell: Vector2i, tile_position: Vector2) -> void:
 							tile_position + Vector2(offset, 0),
 							Vector2(2, notch_length)
 						),
-						burnt_grass
+						edge_terrain_color
 					)
 
 				Vector2i.DOWN:
@@ -1551,7 +1769,7 @@ func draw_scorched_edges(cell: Vector2i, tile_position: Vector2) -> void:
 							tile_position + Vector2(offset, 32 - notch_length),
 							Vector2(2, notch_length)
 						),
-						burnt_grass
+						edge_terrain_color
 					)
 
 				Vector2i.LEFT:
@@ -1560,7 +1778,7 @@ func draw_scorched_edges(cell: Vector2i, tile_position: Vector2) -> void:
 							tile_position + Vector2(0, offset),
 							Vector2(notch_length, 2)
 						),
-						burnt_grass
+						edge_terrain_color
 					)
 
 				Vector2i.RIGHT:
@@ -1569,8 +1787,9 @@ func draw_scorched_edges(cell: Vector2i, tile_position: Vector2) -> void:
 							tile_position + Vector2(32 - notch_length, offset),
 							Vector2(notch_length, 2)
 						),
-						burnt_grass
+						edge_terrain_color
 					)
+
 func draw_plains_tile(cell: Vector2i, tile_position: Vector2) -> void:
 	var grass_dark := Color("#527849")
 	var grass_mid := Color("#729b61")
@@ -1755,118 +1974,358 @@ func get_biome_ground_color(cell: Vector2i) -> Color:
 					return Color("#87aa79")
 
 func draw_desert_tile(cell: Vector2i, tile_position: Vector2) -> void:
-	# Deterministic variation: each cell keeps its pattern on redraw.
-	var seed_value: int = absi(
-		cell.x * 73856093 ^ cell.y * 19349663
+	# Stable randomization: decorations don't change on redraw.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = (
+		(cell.x * 73856093)
+		^ (cell.y * 19349663)
+		^ 83492791
+	) & 0x7fffffff
+
+	# Some tiles remain mostly empty.
+	if rng.randf() < 0.30:
+		return
+
+	# Weighted selection of decoration types.
+	var roll := rng.randf()
+	var variation := 6
+
+	if roll < 0.16:
+		variation = 0  # Large dune
+	elif roll < 0.30:
+		variation = 4  # Low dune
+	elif roll < 0.44:
+		variation = 1  # Angular rock
+	elif roll < 0.56:
+		variation = 5  # Small stones
+	elif roll < 0.69:
+		variation = 2  # Dried grass
+	elif roll < 0.85:
+		variation = 3  # Wind ripples
+
+	# Small positional offsets break up the grid pattern.
+	var decoration_offset := Vector2(
+		rng.randi_range(-2, 2),
+		rng.randi_range(-2, 2)
 	)
 
-	var variation: int = seed_value % 5
+	tile_position += decoration_offset
 
-	var sand_shadow := Color("#a58d65")
-	var sand_highlight := Color("#dfc99d")
-	var rock_color := Color("#887b69")
+	# Cel-shaded desert palette.
+	var sand_shadow := Color("#ad9165")
+	var sand_mid := Color("#c7ad7e")
+	var sand_light := Color("#ead4a5")
+	var sand_highlight := Color("#f5e3bc")
+
+	var rock_outline := Color("#66594a")
+	var rock_shadow := Color("#89765e")
+	var rock_mid := Color("#b39a75")
+	var rock_light := Color("#d6bd91")
+
+	var dry_grass_dark := Color("#81744b")
+	var dry_grass_light := Color("#b7a16b")
 
 	match variation:
 		0:
-			# Short wind-swept sand lines.
-			draw_line(
-				tile_position + Vector2(5, 11),
-				tile_position + Vector2(13, 11),
-				sand_shadow,
-				1.0
+			# Small wind-shaped dune.
+			# The three colour bands give it a raised appearance.
+			draw_colored_polygon(
+				PackedVector2Array([
+					tile_position + Vector2(3, 21),
+					tile_position + Vector2(9, 17),
+					tile_position + Vector2(18, 16),
+					tile_position + Vector2(27, 20),
+					tile_position + Vector2(29, 23),
+					tile_position + Vector2(4, 23)
+				]),
+				sand_shadow
 			)
+
+			draw_colored_polygon(
+				PackedVector2Array([
+					tile_position + Vector2(5, 20),
+					tile_position + Vector2(11, 17),
+					tile_position + Vector2(18, 17),
+					tile_position + Vector2(25, 20),
+					tile_position + Vector2(22, 20),
+					tile_position + Vector2(11, 19)
+				]),
+				sand_light
+			)
+
 			draw_line(
-				tile_position + Vector2(18, 23),
-				tile_position + Vector2(27, 23),
+				tile_position + Vector2(11, 17),
+				tile_position + Vector2(18, 17),
 				sand_highlight,
 				1.0
 			)
 
 		1:
-			# A few small stones.
+			# Angular stone with a dark outline.
 			draw_rect(
-				Rect2(tile_position + Vector2(8, 20), Vector2(4, 3)),
-				rock_color
+				Rect2(tile_position + Vector2(9, 19), Vector2(9, 6)),
+				rock_outline
 			)
+
 			draw_rect(
-				Rect2(tile_position + Vector2(23, 9), Vector2(3, 2)),
-				sand_shadow
+				Rect2(tile_position + Vector2(10, 18), Vector2(7, 5)),
+				rock_mid
+			)
+
+			draw_rect(
+				Rect2(tile_position + Vector2(11, 18), Vector2(5, 2)),
+				rock_light
+			)
+
+			draw_rect(
+				Rect2(tile_position + Vector2(14, 22), Vector2(3, 2)),
+				rock_shadow
+			)
+
+			# Small secondary pebble.
+			draw_rect(
+				Rect2(tile_position + Vector2(23, 11), Vector2(4, 3)),
+				rock_outline
+			)
+
+			draw_rect(
+				Rect2(tile_position + Vector2(23, 11), Vector2(3, 1)),
+				rock_light
 			)
 
 		2:
-			# Sparse dried vegetation.
-			draw_line(
-				tile_position + Vector2(12, 24),
-				tile_position + Vector2(9, 19),
-				sand_shadow,
-				1.0
+			# Sparse, dried grass tuft.
+			draw_rect(
+				Rect2(tile_position + Vector2(13, 23), Vector2(6, 2)),
+				sand_shadow
 			)
+
 			draw_line(
-				tile_position + Vector2(12, 24),
-				tile_position + Vector2(15, 20),
+				tile_position + Vector2(16, 23),
+				tile_position + Vector2(11, 17),
+				dry_grass_dark,
+				2.0
+			)
+
+			draw_line(
+				tile_position + Vector2(16, 23),
+				tile_position + Vector2(17, 15),
+				dry_grass_dark,
+				2.0
+			)
+
+			draw_line(
+				tile_position + Vector2(16, 23),
+				tile_position + Vector2(22, 18),
+				dry_grass_light,
+				2.0
+			)
+
+			draw_rect(
+				Rect2(tile_position + Vector2(16, 17), Vector2(1, 4)),
+				dry_grass_light
+			)
+
+		3:
+			# Layered wind ripples.
+			draw_line(
+				tile_position + Vector2(5, 11),
+				tile_position + Vector2(17, 11),
+				sand_light,
+				2.0
+			)
+
+			draw_line(
+				tile_position + Vector2(8, 13),
+				tile_position + Vector2(19, 13),
 				sand_shadow,
 				1.0
 			)
 
-		3:
-			# Subtle sand ripples.
 			draw_line(
-				tile_position + Vector2(6, 14),
-				tile_position + Vector2(16, 14),
-				sand_highlight,
-				1.0
+				tile_position + Vector2(17, 22),
+				tile_position + Vector2(27, 22),
+				sand_mid,
+				2.0
 			)
+
 			draw_line(
-				tile_position + Vector2(11, 17),
-				tile_position + Vector2(21, 17),
-				sand_shadow,
+				tile_position + Vector2(19, 21),
+				tile_position + Vector2(25, 21),
+				sand_highlight,
 				1.0
 			)
 
 		4:
-			# Nearly bare sand.
-			draw_rect(
-				Rect2(tile_position + Vector2(21, 21), Vector2(3, 1)),
-				sand_highlight
+			# Low dune with a darker leeward slope.
+			draw_colored_polygon(
+				PackedVector2Array([
+					tile_position + Vector2(4, 19),
+					tile_position + Vector2(10, 16),
+					tile_position + Vector2(19, 16),
+					tile_position + Vector2(27, 20),
+					tile_position + Vector2(24, 22),
+					tile_position + Vector2(8, 22)
+				]),
+				sand_mid
 			)
 
+			draw_line(
+				tile_position + Vector2(10, 16),
+				tile_position + Vector2(19, 16),
+				sand_highlight,
+				2.0
+			)
+
+			draw_line(
+				tile_position + Vector2(8, 22),
+				tile_position + Vector2(24, 22),
+				sand_shadow,
+				1.0
+			)
+
+		5:
+			# Scattered small stones.
+			draw_rect(
+				Rect2(tile_position + Vector2(7, 21), Vector2(5, 3)),
+				rock_outline
+			)
+
+			draw_rect(
+				Rect2(tile_position + Vector2(8, 21), Vector2(3, 1)),
+				rock_light
+			)
+
+			draw_rect(
+				Rect2(tile_position + Vector2(21, 9), Vector2(4, 3)),
+				rock_shadow
+			)
+
+			draw_rect(
+				Rect2(tile_position + Vector2(21, 9), Vector2(3, 1)),
+				rock_light
+			)
+
+			draw_line(
+				tile_position + Vector2(16, 26),
+				tile_position + Vector2(24, 26),
+				sand_shadow,
+				1.0
+			)
+
+		6:
+			# Mostly bare sand, with subtle wind marks.
+			draw_line(
+				tile_position + Vector2(8, 12),
+				tile_position + Vector2(14, 12),
+				sand_highlight,
+				1.0
+			)
+
+			draw_line(
+				tile_position + Vector2(10, 14),
+				tile_position + Vector2(18, 14),
+				sand_shadow,
+				1.0
+			)
+
+			draw_rect(
+				Rect2(tile_position + Vector2(23, 23), Vector2(3, 1)),
+				sand_light
+			)
 
 func draw_snow_tile(cell: Vector2i, tile_position: Vector2) -> void:
-	var snow_light := Color("#f0f6fa")
-	var snow_shadow := Color("#b8cad6")
+	var snow_bright := Color("#ffffff")
+	var snow_light := Color("#edf5f9")
+	var snow_shadow := Color("#b5cbd9")
+	var snow_deep := Color("#91afc2")
 
-	# Use tile coordinates for consistent variation.
-	var pattern: int = (cell.x * 7 + cell.y * 11) % 4
+	var seed_value: int = absi(
+		cell.x * 73856093 ^ cell.y * 19349663
+	)
 
-	if pattern == 0:
-		# Small snowdrift.
-		draw_rect(
-			Rect2(tile_position + Vector2(6, 10), Vector2(14, 3)),
-			snow_light
-		)
-		draw_rect(
-			Rect2(tile_position + Vector2(10, 13), Vector2(10, 2)),
-			snow_shadow
-		)
+	var pattern: int = seed_value % 12
 
-	elif pattern == 1:
-		# Scattered ice flecks.
-		draw_rect(
-			Rect2(tile_position + Vector2(8, 7), Vector2(4, 3)),
-			snow_light
-		)
-		draw_rect(
-			Rect2(tile_position + Vector2(22, 21), Vector2(6, 2)),
-			snow_shadow
-		)
+	match pattern:
+		0:
+			# Large, softly stepped snowdrift.
+			draw_rect(
+				Rect2(tile_position + Vector2(4, 21), Vector2(23, 3)),
+				snow_shadow
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(7, 19), Vector2(18, 3)),
+				snow_light
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(11, 17), Vector2(11, 2)),
+				snow_bright
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(8, 24), Vector2(16, 1)),
+				snow_deep
+			)
 
-	elif pattern == 2:
-		# Wind-swept snow.
-		draw_rect(
-			Rect2(tile_position + Vector2(5, 19), Vector2(18, 2)),
-			snow_light
-		)
-		draw_rect(
-			Rect2(tile_position + Vector2(14, 22), Vector2(12, 2)),
-			snow_shadow
-		)
+		1:
+			# Wind-sculpted ridge.
+			draw_rect(
+				Rect2(tile_position + Vector2(3, 15), Vector2(8, 2)),
+				snow_light
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(9, 14), Vector2(12, 2)),
+				snow_bright
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(19, 16), Vector2(9, 2)),
+				snow_light
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(10, 17), Vector2(15, 1)),
+				snow_shadow
+			)
+
+		2:
+			# Small irregular drift.
+			draw_rect(
+				Rect2(tile_position + Vector2(15, 23), Vector2(13, 3)),
+				snow_shadow
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(17, 21), Vector2(9, 2)),
+				snow_light
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(20, 20), Vector2(5, 1)),
+				snow_bright
+			)
+
+		3:
+			# A tiny patch of exposed icy ground.
+			draw_rect(
+				Rect2(tile_position + Vector2(12, 23), Vector2(7, 2)),
+				snow_deep
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(10, 22), Vector2(10, 1)),
+				snow_shadow
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(13, 22), Vector2(4, 1)),
+				snow_light
+			)
+
+		4:
+			# Very subtle snow surface variation.
+			draw_rect(
+				Rect2(tile_position + Vector2(7, 10), Vector2(12, 1)),
+				snow_light
+			)
+			draw_rect(
+				Rect2(tile_position + Vector2(11, 11), Vector2(8, 1)),
+				snow_shadow
+			)
+
+		_:
+			# Most snow tiles remain untouched.
+			pass
