@@ -79,6 +79,7 @@ func _ready() -> void:
 	
 	enemy_sprite.color = ENEMY_COLOR
 	player_sprite.color = PLAYER_COLOR
+	setup_combat_swordsman_art()
 
 	enemy_hp_bar.show_percentage = false
 	player_hp_bar.show_percentage = false
@@ -148,12 +149,12 @@ func layout_battle_screen() -> void:
 
 	enemy_sprite.position = Vector2(
 		center_x - 160,
-		center_y - 16
+		ground_y - SPRITE_SIZE.y + 10
 	)
 
 	player_sprite.position = Vector2(
 		center_x + 88,
-		center_y - 16
+		ground_y - SPRITE_SIZE.y + 10
 	)
 
 	enemy_info.position = Vector2(
@@ -219,6 +220,7 @@ func setup_battle(attacker: Unit, defender: Unit) -> void:
 	
 	player_sprite.color = PLAYER_COLOR
 	enemy_sprite.color = ENEMY_COLOR
+	update_combat_character_art()
 	player_sprite.rotation = 0.0
 	enemy_sprite.rotation = 0.0
 	
@@ -2247,3 +2249,72 @@ func animate_defeat(unit: Unit) -> void:
 	await tween.finished
 
 	sprite.position = starting_position
+
+
+
+func setup_combat_swordsman_art() -> void:
+	for sprite in [player_sprite, enemy_sprite]:
+		var swordsman_art := CombatSwordsmanArt.new()
+		swordsman_art.name = "SwordsmanArt"
+		swordsman_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		swordsman_art.team_color = (
+			PLAYER_COLOR if sprite == player_sprite else ENEMY_COLOR
+		)
+		swordsman_art.facing_left = sprite == player_sprite
+		swordsman_art.visible = false
+		sprite.add_child(swordsman_art)
+
+		var fighter_art := CombatFighterArt.new()
+		fighter_art.name = "FighterArt"
+		fighter_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fighter_art.team_color = (
+			PLAYER_COLOR if sprite == player_sprite else ENEMY_COLOR
+		)
+		fighter_art.facing_left = sprite == player_sprite
+		fighter_art.visible = false
+		sprite.add_child(fighter_art)
+
+
+
+
+func update_combat_character_art() -> void:
+	var combat_sprites := [
+		{"sprite": player_sprite, "unit": player_unit},
+		{"sprite": enemy_sprite, "unit": enemy_unit}
+	]
+
+	for entry in combat_sprites:
+		var sprite: ColorRect = entry["sprite"]
+		var unit: Unit = entry["unit"]
+
+		var swordsman_art: CombatSwordsmanArt = sprite.get_node(
+			"SwordsmanArt"
+		)
+
+		var fighter_art: CombatFighterArt = sprite.get_node(
+			"FighterArt"
+		)
+
+		var class_name_text := ""
+
+		if (
+			unit != null
+			and unit.unit_data != null
+			and unit.unit_data.unit_class != null
+		):
+			class_name_text = (
+				unit.unit_data.unit_class.class_name_display.to_lower()
+			)
+
+		var is_swordsman := class_name_text == "swordsman"
+		var is_fighter := class_name_text == "fighter"
+
+		swordsman_art.visible = is_swordsman
+		fighter_art.visible = is_fighter
+
+		if is_swordsman or is_fighter:
+			sprite.color = Color.TRANSPARENT
+		else:
+			sprite.color = (
+				PLAYER_COLOR if sprite == player_sprite else ENEMY_COLOR
+			)
