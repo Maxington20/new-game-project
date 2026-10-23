@@ -1737,81 +1737,241 @@ func add_desert_forest_scenery(center: Vector2) -> void:
 			leaf.color = leaf_highlight if i >= 2 else leaf_color
 			terrain_scenery.add_child(leaf)
 
+
 func add_fort_scenery(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
 	var wall_height: float = 125.0
 	var wall_top: float = ground_y - wall_height
+	var end_x: float = start_x + section_width
 
-	var wall_color := Color("#4c5865")
-	var battlement_color := Color("#788797")
-	var mortar_color := Color("#35404c")
+	var outline := Color("#292b35")
+	var stone_base := Color("#647381")
+	var stone_light := Color("#8999a7")
+	var stone_dark := Color("#465460")
+	var mortar := Color("#35404c")
 
-	# Desert forts use sandstone instead of grey stone.
 	if battlefield_grid.biome == BattlefieldGrid.Biome.DESERT:
-		wall_color = Color("#b89a6b")
-		battlement_color = Color("#dfc69a")
-		mortar_color = Color("#806747")
+		stone_base = Color("#b89a6b")
+		stone_light = Color("#dfc69a")
+		stone_dark = Color("#8b704e")
+		mortar = Color("#806747")
 
-	# Main stone wall.
-	var wall := ColorRect.new()
-	wall.color = wall_color
-	wall.position = Vector2(start_x, wall_top)
-	wall.size = Vector2(section_width, wall_height)
-	wall.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	elif battlefield_grid.biome == BattlefieldGrid.Biome.SNOW:
+		stone_base = Color("#879eac")
+		stone_light = Color("#b6cbd6")
+		stone_dark = Color("#607888")
+		mortar = Color("#4c6373")
+
+	# Main wall silhouette.
+	var wall_outline := Polygon2D.new()
+	wall_outline.polygon = PackedVector2Array([
+		Vector2(start_x, wall_top - 3),
+		Vector2(end_x, wall_top - 3),
+		Vector2(end_x, ground_y),
+		Vector2(start_x, ground_y)
+	])
+	wall_outline.color = outline
+	terrain_scenery.add_child(wall_outline)
+
+	# Main wall face.
+	var wall := Polygon2D.new()
+	wall.polygon = PackedVector2Array([
+		Vector2(start_x + 2, wall_top),
+		Vector2(end_x - 2, wall_top),
+		Vector2(end_x - 2, ground_y),
+		Vector2(start_x + 2, ground_y)
+	])
+	wall.color = stone_base
 	terrain_scenery.add_child(wall)
 
-	# Stone blocks along the top of the wall.
+	# Hard-edged light and shadow regions.
+	var wall_highlight := Polygon2D.new()
+	wall_highlight.polygon = PackedVector2Array([
+		Vector2(start_x + 3, wall_top + 3),
+		Vector2(end_x - 3, wall_top + 3),
+		Vector2(end_x - 3, wall_top + 13),
+		Vector2(start_x + 3, wall_top + 17)
+	])
+	wall_highlight.color = stone_light
+	terrain_scenery.add_child(wall_highlight)
+
+	var wall_shadow := Polygon2D.new()
+	wall_shadow.polygon = PackedVector2Array([
+		Vector2(end_x - 19, wall_top + 16),
+		Vector2(end_x - 2, wall_top + 13),
+		Vector2(end_x - 2, ground_y),
+		Vector2(end_x - 28, ground_y)
+	])
+	wall_shadow.color = stone_dark
+	terrain_scenery.add_child(wall_shadow)
+
+	# Three staggered courses of masonry.
+	for row in range(1, 4):
+		var y: float = wall_top + float(row) * 30.0
+
+		var horizontal := Line2D.new()
+		horizontal.width = 3.0
+		horizontal.default_color = mortar
+		horizontal.points = PackedVector2Array([
+			Vector2(start_x + 2, y),
+			Vector2(end_x - 2, y)
+		])
+		terrain_scenery.add_child(horizontal)
+
+		# Offset the vertical joints between courses.
+		var joint_spacing: float = 64.0
+		var offset: float = 32.0 if row % 2 == 0 else 0.0
+		var joint_x: float = start_x + offset + joint_spacing
+
+		while joint_x < end_x - 3:
+			var joint := Line2D.new()
+			joint.width = 2.0
+			joint.default_color = mortar
+			joint.points = PackedVector2Array([
+				Vector2(joint_x, y - 29),
+				Vector2(joint_x, y)
+			])
+			terrain_scenery.add_child(joint)
+
+			joint_x += joint_spacing
+
+		# Sparse highlights on individual stones.
+		var highlight_x: float = start_x + 13.0 + offset
+		while highlight_x < end_x - 24:
+			var stone_mark := Polygon2D.new()
+			stone_mark.polygon = PackedVector2Array([
+				Vector2(highlight_x, y - 23),
+				Vector2(highlight_x + 19, y - 23),
+				Vector2(highlight_x + 14, y - 20),
+				Vector2(highlight_x, y - 20)
+			])
+			stone_mark.color = stone_light
+			terrain_scenery.add_child(stone_mark)
+			highlight_x += 128.0
+
+	# Battlements retain the original size, count and spacing.
 	var block_width: float = 42.0
 	var block_gap: float = 22.0
-	var block_count: int = floori(section_width / (block_width + block_gap))
+	var block_count: int = floori(
+		section_width / (block_width + block_gap)
+	)
 
 	for i in range(block_count):
-		var battlement := ColorRect.new()
-		battlement.color = battlement_color
-		battlement.position = Vector2(
-			start_x + i * (block_width + block_gap) + 10.0,
-			wall_top - 24.0
+		var x: float = (
+			start_x
+			+ float(i) * (block_width + block_gap)
+			+ 10.0
 		)
-		battlement.size = Vector2(block_width, 24)
-		battlement.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var y: float = wall_top - 24.0
+
+		# Dark battlement silhouette.
+		var battlement_outline := Polygon2D.new()
+		battlement_outline.polygon = PackedVector2Array([
+			Vector2(x - 2, wall_top + 2),
+			Vector2(x - 2, y + 2),
+			Vector2(x + 2, y - 2),
+			Vector2(x + block_width - 3, y - 2),
+			Vector2(x + block_width + 2, y + 2),
+			Vector2(x + block_width + 2, wall_top + 2)
+		])
+		battlement_outline.color = outline
+		terrain_scenery.add_child(battlement_outline)
+
+		# Main stone block.
+		var battlement := Polygon2D.new()
+		battlement.polygon = PackedVector2Array([
+			Vector2(x, wall_top),
+			Vector2(x, y + 3),
+			Vector2(x + 3, y),
+			Vector2(x + block_width - 4, y),
+			Vector2(x + block_width, y + 3),
+			Vector2(x + block_width, wall_top)
+		])
+		battlement.color = stone_base
 		terrain_scenery.add_child(battlement)
-		
-		# Snow collects on top of each battlement.
+
+		# Bright top and left face.
+		var battlement_light := Polygon2D.new()
+		battlement_light.polygon = PackedVector2Array([
+			Vector2(x + 2, y + 4),
+			Vector2(x + 4, y + 2),
+			Vector2(x + block_width - 5, y + 2),
+			Vector2(x + block_width - 8, y + 7),
+			Vector2(x + 7, y + 7),
+			Vector2(x + 7, wall_top - 2),
+			Vector2(x + 2, wall_top - 2)
+		])
+		battlement_light.color = stone_light
+		terrain_scenery.add_child(battlement_light)
+
+		# Dark right face.
+		var battlement_shadow := Polygon2D.new()
+		battlement_shadow.polygon = PackedVector2Array([
+			Vector2(x + block_width - 9, y + 7),
+			Vector2(x + block_width - 2, y + 4),
+			Vector2(x + block_width - 2, wall_top),
+			Vector2(x + block_width - 12, wall_top)
+		])
+		battlement_shadow.color = stone_dark
+		terrain_scenery.add_child(battlement_shadow)
+
+		# Small masonry joint.
+		var joint := Line2D.new()
+		joint.width = 2.0
+		joint.default_color = mortar
+		joint.points = PackedVector2Array([
+			Vector2(x + 17, wall_top - 1),
+			Vector2(x + 17, wall_top - 10)
+		])
+		terrain_scenery.add_child(joint)
+
+		# Snow caps remain restricted to snowy forts.
 		if battlefield_grid.biome == BattlefieldGrid.Biome.SNOW:
-			var snow_cap := ColorRect.new()
-			snow_cap.color = Color("#edf5f9")
-			snow_cap.position = battlement.position
-			snow_cap.size = Vector2(block_width, 7)
-			snow_cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			terrain_scenery.add_child(snow_cap)
-	# Snow settles along the exposed top of the main wall.
+			var snow_shadow := Polygon2D.new()
+			snow_shadow.polygon = PackedVector2Array([
+				Vector2(x + 1, y + 1),
+				Vector2(x + block_width - 1, y + 1),
+				Vector2(x + block_width - 3, y + 8),
+				Vector2(x + 26, y + 6),
+				Vector2(x + 18, y + 10),
+				Vector2(x + 8, y + 6),
+				Vector2(x + 2, y + 8)
+			])
+			snow_shadow.color = Color("#b7ceda")
+			terrain_scenery.add_child(snow_shadow)
+
+			var snow_light := Polygon2D.new()
+			snow_light.polygon = PackedVector2Array([
+				Vector2(x + 2, y + 1),
+				Vector2(x + block_width - 3, y + 1),
+				Vector2(x + block_width - 7, y + 4),
+				Vector2(x + 20, y + 5),
+				Vector2(x + 9, y + 4)
+			])
+			snow_light.color = Color("#edf5f8")
+			terrain_scenery.add_child(snow_light)
+
+	# Snow along the exposed sections between battlements.
 	if battlefield_grid.biome == BattlefieldGrid.Biome.SNOW:
 		for i in range(block_count):
-			var snow_between := ColorRect.new()
-			snow_between.color = Color("#dce9f0")
-			snow_between.position = Vector2(
-				start_x + i * (block_width + block_gap) + 10.0 + block_width,
-				wall_top
+			var gap_x: float = (
+				start_x
+				+ float(i) * (block_width + block_gap)
+				+ 10.0
+				+ block_width
 			)
-			snow_between.size = Vector2(
-				minf(block_gap, start_x + section_width - snow_between.position.x),
-				5.0
-			)
-			snow_between.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			terrain_scenery.add_child(snow_between)
+			var gap_end: float = minf(gap_x + block_gap, end_x)
 
-	# Horizontal mortar lines.
-	for row in range(1, 4):
-		var mortar := ColorRect.new()
-		mortar.color = mortar_color
-		mortar.position = Vector2(
-			start_x,
-			wall_top + row * 30.0
-		)
-		mortar.size = Vector2(section_width, 3)
-		mortar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		terrain_scenery.add_child(mortar)
-
+			if gap_end > gap_x:
+				var snow_between := Polygon2D.new()
+				snow_between.polygon = PackedVector2Array([
+					Vector2(gap_x, wall_top),
+					Vector2(gap_end, wall_top),
+					Vector2(gap_end - 2, wall_top + 5),
+					Vector2(gap_x + 2, wall_top + 5)
+				])
+				snow_between.color = Color("#dce9f0")
+				terrain_scenery.add_child(snow_between)
 
 
 func add_lava_scenery(start_x: float, section_width: float) -> void:
