@@ -2989,68 +2989,163 @@ func add_forest_ground_details(
 			ground_details.add_child(right_blade)
 
 
+
 func add_fort_ground_details(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
+	var end_x: float = start_x + section_width
+	var bottom_y: float = size.y
 
-	var mortar_color := Color("#505966")
-	var stone_light := Color("#89939e")
-	var stone_dark := Color("#606a76")
+	var outline := Color("#414954")
+	var stone_base := Color("#707986")
+	var stone_light := Color("#8999a7")
+	var stone_dark := Color("#596572")
+	var mortar := Color("#505966")
 
-	# Desert forts use sandstone-coloured masonry.
 	if battlefield_grid.biome == BattlefieldGrid.Biome.DESERT:
-		mortar_color = Color("#806747")
+		outline = Color("#67543f")
+		stone_base = Color("#b89a6b")
 		stone_light = Color("#dfc69a")
-		stone_dark = Color("#a8895e")
-	
-	# Snowy forts use cold, frost-covered stone.
-	if battlefield_grid.biome == BattlefieldGrid.Biome.SNOW:
-		mortar_color = Color("#667b89")
+		stone_dark = Color("#947650")
+		mortar = Color("#806747")
+
+	elif battlefield_grid.biome == BattlefieldGrid.Biome.SNOW:
+		outline = Color("#526675")
+		stone_base = Color("#a8bac5")
 		stone_light = Color("#dce9f0")
-		stone_dark = Color("#9fb5c3")
-	
-	var tile_width: float = 48.0
-	var tile_height: float = 24.0
+		stone_dark = Color("#8399a8")
+		mortar = Color("#667b89")
 
-	var row_index := 0
-	var y: float = ground_y + 12.0
+	# A dark seam separates the vertical wall from the courtyard.
+	var wall_base_shadow := Polygon2D.new()
+	wall_base_shadow.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y),
+		Vector2(end_x, ground_y),
+		Vector2(end_x, ground_y + 9),
+		Vector2(start_x, ground_y + 9)
+	])
+	wall_base_shadow.color = outline
+	ground_details.add_child(wall_base_shadow)
 
-	while y < size.y:
-		# Horizontal mortar line.
-		var horizontal := ColorRect.new()
-		horizontal.color = mortar_color
-		horizontal.position = Vector2(start_x, y)
-		horizontal.size = Vector2(section_width, 2)
-		horizontal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Main courtyard surface with subtle directional shading.
+	var courtyard := Polygon2D.new()
+	courtyard.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y + 9),
+		Vector2(end_x, ground_y + 9),
+		Vector2(end_x, bottom_y),
+		Vector2(start_x, bottom_y)
+	])
+	courtyard.color = stone_base
+	ground_details.add_child(courtyard)
+
+	# A slightly lighter region near the wall.
+	var upper_light := Polygon2D.new()
+	upper_light.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y + 10),
+		Vector2(end_x, ground_y + 10),
+		Vector2(end_x, ground_y + 46),
+		Vector2(start_x, ground_y + 37)
+	])
+	upper_light.color = stone_light.darkened(0.12)
+	ground_details.add_child(upper_light)
+
+	# A darker foreground gives the paving some depth.
+	var foreground_shadow := Polygon2D.new()
+	foreground_shadow.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y + 139),
+		Vector2(start_x + section_width * 0.4, ground_y + 132),
+		Vector2(end_x, ground_y + 143),
+		Vector2(end_x, bottom_y),
+		Vector2(start_x, bottom_y)
+	])
+	foreground_shadow.color = stone_dark
+	ground_details.add_child(foreground_shadow)
+
+	# Perspective paving:
+	# Narrower rows near the wall, larger rows toward the viewer.
+	var row_heights: Array[float] = [
+		23.0,
+		29.0,
+		36.0,
+		45.0,
+		54.0
+	]
+
+	var y: float = ground_y + 9.0
+	var row_index: int = 0
+
+	while y < bottom_y:
+		var row_height: float = row_heights[
+			mini(row_index, row_heights.size() - 1)
+		]
+
+		var next_y: float = minf(y + row_height, bottom_y)
+
+		# Horizontal joints become more prominent in the foreground.
+		var horizontal := Line2D.new()
+		horizontal.width = 2.0
+		horizontal.default_color = mortar
+		horizontal.points = PackedVector2Array([
+			Vector2(start_x, y),
+			Vector2(end_x, y)
+		])
 		ground_details.add_child(horizontal)
 
-		# Offset alternating rows to create a brick pattern.
-		var offset: float = 0.0 if row_index % 2 == 0 else tile_width / 2.0
-		var x: float = start_x + offset
+		# Larger slabs in rows closer to the viewer.
+		var slab_width: float = 72.0 + float(row_index) * 15.0
+		var offset: float = (
+			0.0 if row_index % 2 == 0 else slab_width * 0.5
+		)
 
-		while x < start_x + section_width:
-			var vertical := ColorRect.new()
-			vertical.color = mortar_color
-			vertical.position = Vector2(x, y)
-			vertical.size = Vector2(2, tile_height)
-			vertical.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ground_details.add_child(vertical)
+		var x: float = start_x - slab_width + offset
+		var slab_index: int = 0
 
-			x += tile_width
+		while x < end_x:
+			var slab_left: float = maxf(x, start_x)
+			var slab_right: float = minf(x + slab_width, end_x)
 
-		y += tile_height
+			if slab_right > slab_left:
+				# Vertical mortar joint.
+				if x > start_x and x < end_x:
+					var joint := Line2D.new()
+					joint.width = 2.0
+					joint.default_color = mortar
+					joint.points = PackedVector2Array([
+						Vector2(x, y),
+						Vector2(x, next_y)
+					])
+					ground_details.add_child(joint)
+
+				# Hard-edged highlight on selected paving stones.
+				# Keep these sparse to avoid a noisy checkerboard.
+				if (row_index + slab_index) % 3 == 0:
+					var highlight := Polygon2D.new()
+					highlight.polygon = PackedVector2Array([
+						Vector2(slab_left + 4, y + 4),
+						Vector2(slab_right - 5, y + 4),
+						Vector2(slab_right - 12, y + 7),
+						Vector2(slab_left + 4, y + 7)
+					])
+					highlight.color = stone_light
+					ground_details.add_child(highlight)
+
+				# Occasional dark facets add variation to the slabs.
+				if (row_index * 3 + slab_index) % 5 == 0:
+					var facet := Polygon2D.new()
+					facet.polygon = PackedVector2Array([
+						Vector2(slab_right - 17, next_y - 12),
+						Vector2(slab_right - 4, next_y - 17),
+						Vector2(slab_right - 4, next_y - 4),
+						Vector2(slab_right - 13, next_y - 4)
+					])
+					facet.color = stone_dark
+					ground_details.add_child(facet)
+
+			x += slab_width
+			slab_index += 1
+
+		y = next_y
 		row_index += 1
 
-	# Subtle stone highlights and weathering.
-	for i in range(12):
-		var x: float = start_x + 14.0 + float((i * 43) % int(maxf(section_width - 28.0, 1.0)))
-		var detail_y: float = ground_y + 20.0 + float((i * 29) % 85)
-
-		var detail := ColorRect.new()
-		detail.color = stone_light if i % 3 == 0 else stone_dark
-		detail.position = Vector2(x, detail_y)
-		detail.size = Vector2(12, 3)
-		detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ground_details.add_child(detail)
 
 func style_battle_status_panels() -> void:
 	
