@@ -1006,6 +1006,7 @@ func animate_hp_bar(unit: Unit) -> void:
 
 
 
+
 func animate_hit_flash(unit: Unit) -> void:
 	var sprite: ColorRect = (
 		player_sprite
@@ -1013,18 +1014,51 @@ func animate_hit_flash(unit: Unit) -> void:
 		else enemy_sprite
 	)
 
-	var original_color: Color = sprite.color
+	# Find the visible character artwork.
+	var art: CanvasItem = null
 
-	sprite.color = Color.WHITE
-	await get_tree().create_timer(0.08).timeout
+	for child in sprite.get_children():
+		if child is CanvasItem and child.visible:
+			art = child
+			break
 
-	sprite.color = original_color
-	await get_tree().create_timer(0.08).timeout
+	if art == null:
+		return
 
-	sprite.color = Color.WHITE
-	await get_tree().create_timer(0.08).timeout
+	# Flash the actual character artwork.
+	var original_modulate: Color = art.modulate
 
-	sprite.color = original_color
+	var flash_tween := create_tween()
+
+	flash_tween.tween_property(
+		art,
+		"modulate",
+		Color(1.0, 0.35, 0.35, 1.0),
+		0.07
+	)
+
+	flash_tween.tween_property(
+		art,
+		"modulate",
+		original_modulate,
+		0.09
+	)
+
+	flash_tween.tween_property(
+		art,
+		"modulate",
+		Color(1.0, 0.35, 0.35, 1.0),
+		0.07
+	)
+
+	flash_tween.tween_property(
+		art,
+		"modulate",
+		original_modulate,
+		0.12
+	)
+
+	await flash_tween.finished
 
 
 
@@ -2321,40 +2355,68 @@ func add_snow_ground_details(start_x: float, section_width: float) -> void:
 
 
 
+
 func animate_defeat(unit: Unit) -> void:
 	var sprite: ColorRect = (
 		player_sprite
 		if unit.team == Unit.Team.PLAYER
 		else enemy_sprite
 	)
-	
-	var original_color: Color = sprite.color
 
-	sprite.color = Color.WHITE
-	await get_tree().create_timer(0.08).timeout
-	sprite.color = original_color
-	
+	# Find the visible character artwork.
+	var art: CanvasItem = null
+
+	for child in sprite.get_children():
+		if child is CanvasItem and child.visible:
+			art = child
+			break
+
+	# Give the character one final red flash before disappearing.
+	if art != null:
+		var original_modulate: Color = art.modulate
+
+		var flash_tween := create_tween()
+
+		flash_tween.tween_property(
+			art,
+			"modulate",
+			Color(1.0, 0.25, 0.25, 1.0),
+			0.10
+		)
+
+		flash_tween.tween_property(
+			art,
+			"modulate",
+			original_modulate,
+			0.12
+		)
+
+		await flash_tween.finished
+
+	# Fade and sink the defeated character.
 	var starting_position: Vector2 = sprite.position
 
-	var tween := create_tween()
-	tween.set_parallel(true)
+	var defeat_tween := create_tween()
+	defeat_tween.set_parallel(true)
 
-	tween.tween_property(
+	defeat_tween.tween_property(
 		sprite,
 		"modulate:a",
 		0.0,
-		0.5
+		0.55
 	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
-	tween.tween_property(
+	defeat_tween.tween_property(
 		sprite,
 		"position:y",
-		starting_position.y + 24.0,
-		0.5
+		starting_position.y + 28.0,
+		0.55
 	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 
-	await tween.finished
+	await defeat_tween.finished
 
+	# Restore the position for the next battle.
+	# The alpha is restored by setup_battle().
 	sprite.position = starting_position
 
 
