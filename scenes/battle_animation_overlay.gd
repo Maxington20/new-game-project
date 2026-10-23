@@ -2252,27 +2252,48 @@ func animate_defeat(unit: Unit) -> void:
 
 
 
+
+
 func setup_combat_swordsman_art() -> void:
 	for sprite in [player_sprite, enemy_sprite]:
+		var is_player: bool = sprite == player_sprite
+		var color: Color = (
+			PLAYER_COLOR if is_player else ENEMY_COLOR
+		)
+
 		var swordsman_art := CombatSwordsmanArt.new()
 		swordsman_art.name = "SwordsmanArt"
 		swordsman_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		swordsman_art.team_color = (
-			PLAYER_COLOR if sprite == player_sprite else ENEMY_COLOR
-		)
-		swordsman_art.facing_left = sprite == player_sprite
+		swordsman_art.team_color = color
+		swordsman_art.facing_left = is_player
 		swordsman_art.visible = false
 		sprite.add_child(swordsman_art)
 
 		var fighter_art := CombatFighterArt.new()
 		fighter_art.name = "FighterArt"
 		fighter_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		fighter_art.team_color = (
-			PLAYER_COLOR if sprite == player_sprite else ENEMY_COLOR
-		)
-		fighter_art.facing_left = sprite == player_sprite
+		fighter_art.team_color = color
+		fighter_art.facing_left = is_player
 		fighter_art.visible = false
 		sprite.add_child(fighter_art)
+
+		var knight_art := CombatKnightArt.new()
+		knight_art.name = "KnightArt"
+		knight_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		knight_art.team_color = color
+		knight_art.facing_left = is_player
+		knight_art.visible = false
+		sprite.add_child(knight_art)
+
+		var archer_art := CombatArcherArt.new()
+		archer_art.name = "ArcherArt"
+		archer_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		archer_art.team_color = color
+		archer_art.facing_left = is_player
+		archer_art.visible = false
+		sprite.add_child(archer_art)
+
+
 
 
 
@@ -2295,6 +2316,14 @@ func update_combat_character_art() -> void:
 			"FighterArt"
 		)
 
+		var knight_art: CombatKnightArt = sprite.get_node(
+			"KnightArt"
+		)
+
+		var archer_art: CombatArcherArt = sprite.get_node(
+			"ArcherArt"
+		)
+
 		var class_name_text := ""
 
 		if (
@@ -2308,11 +2337,15 @@ func update_combat_character_art() -> void:
 
 		var is_swordsman := class_name_text == "swordsman"
 		var is_fighter := class_name_text == "fighter"
+		var is_knight := class_name_text == "knight"
+		var is_archer := class_name_text == "archer"
 
 		swordsman_art.visible = is_swordsman
 		fighter_art.visible = is_fighter
+		knight_art.visible = is_knight
+		archer_art.visible = is_archer
 
-		if is_swordsman or is_fighter:
+		if is_swordsman or is_fighter or is_knight or is_archer:
 			sprite.color = Color.TRANSPARENT
 		else:
 			sprite.color = (
