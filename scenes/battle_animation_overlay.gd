@@ -3486,47 +3486,118 @@ func add_fort_ground_details(start_x: float, section_width: float) -> void:
 		row_index += 1
 
 
+
+
+
+
 func style_battle_status_panels() -> void:
-	
+	var outline_color := Color("#172331")
+	var panel_background := Color("#243b57")
+
 	enemy_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	player_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	
+
+	# Cel-shaded status panels.
 	for panel in [enemy_info, player_info]:
-		panel.add_theme_stylebox_override(
-			"panel",
-			GameUIStyle.make_panel_style()
+		var is_enemy: bool = panel == enemy_info
+
+		# Remove decorative nodes from earlier versions.
+		var old_accent: Node = panel.get_node_or_null("CelShadeAccent")
+		if old_accent != null:
+			panel.remove_child(old_accent)
+			old_accent.queue_free()
+
+		var team_border: Color = (
+			Color("#8b505c") if is_enemy
+			else Color("#527fa5")
 		)
+
+		var panel_style := StyleBoxFlat.new()
+		panel_style.bg_color = panel_background
+
+		# Stronger team-coloured outer frame.
+		panel_style.border_color = team_border
+		panel_style.set_border_width_all(3)
+		panel_style.border_width_top = 4
+
+		# Sharp, slightly beveled corners.
+		panel_style.set_corner_radius_all(2)
+		panel_style.corner_detail = 1
+
+		# Dark outline immediately inside the coloured border.
+		panel_style.draw_center = true
+
+		# Subtle shadow for separation from the battlefield.
+		panel_style.shadow_color = Color(0, 0, 0, 0.25)
+		panel_style.shadow_size = 3
+		panel_style.shadow_offset = Vector2(2, 3)
+
+		panel_style.content_margin_left = 14
+		panel_style.content_margin_right = 14
+		panel_style.content_margin_top = 12
+		panel_style.content_margin_bottom = 12
+
+		panel.add_theme_stylebox_override("panel", panel_style)
 		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	# Character names.
 	for label in [enemy_name, player_name]:
 		GameUIStyle.style_label(label, 18)
+		label.add_theme_color_override(
+			"font_shadow_color",
+			Color("#101d2b")
+		)
+		label.add_theme_constant_override("shadow_offset_x", 1)
+		label.add_theme_constant_override("shadow_offset_y", 1)
 
+	# Weapon names.
 	for label in [enemy_weapon, player_weapon]:
 		GameUIStyle.style_label(label, 14, true)
 
+	# HP labels.
 	for label in [enemy_hp_label, player_hp_label]:
 		GameUIStyle.style_label(label, 14)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	
+
+	# Level labels.
 	for label in [enemy_level, player_level]:
 		GameUIStyle.style_label(label, 13, true)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	
+
+	# Cel-shaded HP bars.
 	for hp_bar in [enemy_hp_bar, player_hp_bar]:
 		hp_bar.show_percentage = false
-		hp_bar.custom_minimum_size.y = 12
+		hp_bar.custom_minimum_size.y = 14
 
+		# Dark outer frame.
+		var background_style := StyleBoxFlat.new()
+		background_style.bg_color = Color("#142334")
+		background_style.border_color = outline_color
+		background_style.set_border_width_all(2)
+		background_style.set_corner_radius_all(1)
+
+		# Green fill with a darker lower edge.
 		var fill_style := StyleBoxFlat.new()
 		fill_style.bg_color = GameUIStyle.HEALTH
-		fill_style.set_corner_radius_all(3)
+		fill_style.border_color = Color("#3c8548")
+		fill_style.set_border_width_all(0)
+		fill_style.border_width_bottom = 3
+		fill_style.set_corner_radius_all(1)
 
-		var background_style := StyleBoxFlat.new()
-		background_style.bg_color = GameUIStyle.BACKGROUND
-		background_style.set_corner_radius_all(3)
+		# Slightly brighter top edge using the fill's
+		# built-in highlight colour.
+		fill_style.shadow_color = Color("#a0e5a3")
+		fill_style.shadow_size = 1
+		fill_style.shadow_offset = Vector2(0, -1)
 
-		hp_bar.add_theme_stylebox_override("fill", fill_style)
-		hp_bar.add_theme_stylebox_override("background", background_style)
-
+		hp_bar.add_theme_stylebox_override(
+			"background",
+			background_style
+		)
+		hp_bar.add_theme_stylebox_override(
+			"fill",
+			fill_style
+		)
 
 
 func add_lava_ground_details(start_x: float, section_width: float) -> void:
