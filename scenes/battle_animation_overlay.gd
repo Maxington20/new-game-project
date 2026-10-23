@@ -728,6 +728,9 @@ func _show_level_up(character_name: String, new_level: int,
 	exp_notice.show()
 
 
+
+
+
 func play_strike(attacker: Unit, defender: Unit) -> void:
 	if not CombatCalculator.can_attack(attacker, defender):
 		return
@@ -738,20 +741,63 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 		else enemy_sprite
 	)
 
+	var defending_sprite: ColorRect = (
+		player_sprite
+		if defender.team == Unit.Team.PLAYER
+		else enemy_sprite
+	)
+
 	var direction: float = (
 		-1.0 if attacker.team == Unit.Team.PLAYER else 1.0
 	)
 
 	var starting_position: Vector2 = attacking_sprite.position
-	
+
+	# Identify the attacker's class-specific artwork.
+	var swordsman_art: CombatSwordsmanArt = (
+		attacking_sprite.get_node_or_null("SwordsmanArt")
+		as CombatSwordsmanArt
+	)
+
+	var is_swordsman: bool = (
+		swordsman_art != null and swordsman_art.visible
+	)
+
+	var fighter_art: CombatFighterArt = (
+		attacking_sprite.get_node_or_null("FighterArt")
+		as CombatFighterArt
+	)
+
+	var is_fighter: bool = (
+		fighter_art != null and fighter_art.visible
+	)
+
+	var knight_art: CombatKnightArt = (
+		attacking_sprite.get_node_or_null("KnightArt")
+		as CombatKnightArt
+	)
+
+	var is_knight: bool = (
+		knight_art != null and knight_art.visible
+	)
+
+	var archer_art: CombatArcherArt = (
+		attacking_sprite.get_node_or_null("ArcherArt")
+		as CombatArcherArt
+	)
+
+	var is_archer: bool = (
+		archer_art != null and archer_art.visible
+	)
+
 	combat_text.text = ""
 	combat_text.modulate.a = 0.0
 	combat_text.add_theme_color_override("font_color", Color.WHITE)
-	
+
 	combat_text.text = (
 		attacker.unit_data.character_name + " attacks!"
 	)
-	
+
 	var announcement_tween := create_tween()
 	announcement_tween.tween_property(
 		combat_text,
@@ -760,20 +806,46 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 		0.12
 	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
-	
-	var forward_tween := create_tween()
+	# Class-specific attack wind-ups.
+	if is_swordsman:
+		await animate_swordsman_windup(swordsman_art, direction)
+	elif is_fighter:
+		await animate_fighter_windup(fighter_art, direction)
+	elif is_knight:
+		await animate_knight_windup(knight_art, direction)
+	elif is_archer:
+		await animate_archer_draw(archer_art, direction)
 
-	forward_tween.tween_property(
-		attacking_sprite,
-		"position:x",
-		starting_position.x + direction * ATTACK_DISTANCE,
-		0.12
-	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	if is_archer:
+		# The archer stays in place and fires across the battlefield.
+		await animate_archer_release(archer_art, direction)
+		await animate_archer_arrow(
+			attacking_sprite,
+			defending_sprite,
+			direction
+		)
+	else:
+		# Melee classes move toward their opponent.
+		var forward_tween := create_tween()
 
-	await forward_tween.finished
+		forward_tween.tween_property(
+			attacking_sprite,
+			"position:x",
+			starting_position.x + direction * ATTACK_DISTANCE,
+			0.12
+		).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 
+		# Play the appropriate attack animation during the lunge.
+		if is_swordsman:
+			animate_swordsman_slash(swordsman_art, direction)
+		elif is_fighter:
+			animate_fighter_chop(fighter_art, direction)
+		elif is_knight:
+			animate_knight_thrust(knight_art, direction)
 
-	
+		await forward_tween.finished
+
+	# Determine the defender's terrain.
 	var defender_terrain: TerrainResource = null
 
 	if battlefield_grid != null:
@@ -781,36 +853,53 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 			defender.grid_position
 		)
 
+	# Resolve the actual combat strike.
 	var result: Dictionary = CombatCalculator.resolve_strike(
 		attacker,
 		defender,
 		defender_terrain
 	)
 
-
 	if not result["valid"]:
-		# Restore the sprite if the strike becomes invalid mid-animation.
 		attacking_sprite.position = starting_position
+
+		if is_swordsman:
+			swordsman_art.rotation = 0.0
+			swordsman_art.position = Vector2.ZERO
+
+		if is_fighter:
+			fighter_art.rotation = 0.0
+			fighter_art.position = Vector2.ZERO
+
+		if is_knight:
+			knight_art.rotation = 0.0
+			knight_art.position = Vector2.ZERO
+
+		if is_archer:
+			archer_art.rotation = 0.0
+			archer_art.position = Vector2.ZERO
+
 		return
 
-	# Return immediately after impact, concurrently with hit or dodge effects.
-	# Do not await here: HP and defeat animations should not delay the return.
-	var return_tween := create_tween()
-	return_tween.tween_property(
-		attacking_sprite,
-		"position",
-		starting_position,
-		0.22
-	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	# Melee attackers return to their starting positions.
+	# Archers never leave their starting positions.
+	if not is_archer:
+		var return_tween := create_tween()
 
-	# A valid player strike counts once toward encounter EXP, even on a miss.
+		return_tween.tween_property(
+			attacking_sprite,
+			"position",
+			starting_position,
+			0.22
+		).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+	# A valid player strike counts toward encounter EXP, even on a miss.
 	if attacker.team == Unit.Team.PLAYER:
 		player_participated = true
 
-	# Award once for each valid strike, regardless of hit or miss.
+	# Award weapon experience once per valid strike.
 	award_weapon_experience(attacker)
 
-	var attacker_name: String = attacker.unit_data.character_name
 	var defender_name: String = defender.unit_data.character_name
 
 	if result["hit"]:
@@ -824,7 +913,11 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 				"font_color",
 				Color("#ffd166")
 			)
-			combat_text.text = "CRITICAL HIT! " + str(damage) + " DAMAGE!"
+
+			combat_text.text = (
+				"CRITICAL HIT! " + str(damage) + " DAMAGE!"
+			)
+
 			animate_critical_flash()
 			animate_critical_shake()
 		else:
@@ -832,6 +925,7 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 				"font_color",
 				Color.WHITE
 			)
+
 			combat_text.text = str(damage) + " DAMAGE!"
 
 		if result["critical"]:
@@ -845,15 +939,26 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 		await animate_hp_bar(defender)
 
 		if defender.current_hp <= 0:
-			if attacker.team == Unit.Team.PLAYER and defender.team == Unit.Team.ENEMY:
-				player_defeated_enemy = true				
-			combat_text.add_theme_color_override("font_color", Color.WHITE)
+			if (
+				attacker.team == Unit.Team.PLAYER
+				and defender.team == Unit.Team.ENEMY
+			):
+				player_defeated_enemy = true
+
+			combat_text.add_theme_color_override(
+				"font_color",
+				Color.WHITE
+			)
+
 			combat_text.text = (
 				defender_name + " defeated!"
 			)
+
 			await get_tree().create_timer(0.15).timeout
+
 			animate_defeat_shake()
 			await animate_defeat(defender)
+
 			await get_tree().create_timer(0.35).timeout
 
 	else:
@@ -861,11 +966,14 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 			"font_color",
 			Color("#fff176")
 		)
+
 		combat_text.text = "MISS!"
+
 		await animate_dodge(defender)
 
-	
+	# Fade out the combat result text.
 	var text_fade := create_tween()
+
 	text_fade.tween_property(
 		combat_text,
 		"modulate:a",
@@ -875,7 +983,6 @@ func play_strike(attacker: Unit, defender: Unit) -> void:
 
 	await text_fade.finished
 	await get_tree().create_timer(0.25).timeout
-
 
 
 func animate_hp_bar(unit: Unit) -> void:
@@ -2351,3 +2458,326 @@ func update_combat_character_art() -> void:
 			sprite.color = (
 				PLAYER_COLOR if sprite == player_sprite else ENEMY_COLOR
 			)
+
+
+
+func animate_swordsman_windup(
+	art: CombatSwordsmanArt,
+	direction: float
+) -> void:
+	art.pivot_offset = SPRITE_SIZE * 0.5
+	art.position = Vector2.ZERO
+	art.rotation = 0.0
+
+	var windup_tween := create_tween()
+	windup_tween.set_parallel(true)
+
+	# Lean backward in preparation for the slash.
+	windup_tween.tween_property(
+		art,
+		"rotation",
+		-direction * 0.22,
+		0.14
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	windup_tween.tween_property(
+		art,
+		"position:x",
+		-direction * 6.0,
+		0.14
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	await windup_tween.finished
+
+
+func animate_swordsman_slash(
+	art: CombatSwordsmanArt,
+	direction: float
+) -> void:
+	var slash_tween := create_tween()
+	slash_tween.set_parallel(true)
+
+	# Snap forward into the strike.
+	slash_tween.tween_property(
+		art,
+		"rotation",
+		direction * 0.32,
+		0.11
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+	slash_tween.tween_property(
+		art,
+		"position:x",
+		direction * 8.0,
+		0.11
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+	# Recover to the original standing pose.
+	slash_tween.chain().tween_property(
+		art,
+		"rotation",
+		0.0,
+		0.20
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	slash_tween.tween_property(
+		art,
+		"position",
+		Vector2.ZERO,
+		0.20
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+
+
+func animate_fighter_windup(
+	art: CombatFighterArt,
+	direction: float
+) -> void:
+	art.pivot_offset = SPRITE_SIZE * 0.5
+	art.position = Vector2.ZERO
+	art.rotation = 0.0
+
+	var windup_tween := create_tween()
+	windup_tween.set_parallel(true)
+
+	# The fighter leans back farther than the swordsman,
+	# lifting the axe in preparation for a heavy chop.
+	windup_tween.tween_property(
+		art,
+		"rotation",
+		-direction * 0.38,
+		0.24
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	windup_tween.tween_property(
+		art,
+		"position",
+		Vector2(-direction * 7.0, -4.0),
+		0.24
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	await windup_tween.finished
+
+
+func animate_fighter_chop(
+	art: CombatFighterArt,
+	direction: float
+) -> void:
+	var chop_tween := create_tween()
+	chop_tween.set_parallel(true)
+
+	# A forceful downward chop.
+	# The larger rotation and vertical drop distinguish
+	# the fighter from the swordsman's quick slash.
+	chop_tween.tween_property(
+		art,
+		"rotation",
+		direction * 0.48,
+		0.14
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+
+	chop_tween.tween_property(
+		art,
+		"position",
+		Vector2(direction * 10.0, 7.0),
+		0.14
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+
+	# Slower recovery makes the weapon feel heavier.
+	chop_tween.chain().tween_property(
+		art,
+		"rotation",
+		0.0,
+		0.30
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	chop_tween.tween_property(
+		art,
+		"position",
+		Vector2.ZERO,
+		0.30
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	
+	
+	
+
+func animate_knight_windup(
+	art: CombatKnightArt,
+	direction: float
+) -> void:
+	art.pivot_offset = SPRITE_SIZE * 0.5
+	art.position = Vector2.ZERO
+	art.rotation = 0.0
+
+	var windup_tween := create_tween()
+
+	# Draw straight backward to prepare the thrust.
+	windup_tween.tween_property(
+		art,
+		"position:x",
+		-direction * 16.0,
+		0.22
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	await windup_tween.finished
+
+
+func animate_knight_thrust(
+	art: CombatKnightArt,
+	direction: float
+) -> void:
+	var thrust_tween := create_tween()
+
+	# Explosive straight-line thrust.
+	thrust_tween.tween_property(
+		art,
+		"position:x",
+		direction * 28.0,
+		0.09
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+
+	# Brief pause at full extension.
+	thrust_tween.tween_interval(0.08)
+
+	# Controlled withdrawal.
+	thrust_tween.tween_property(
+		art,
+		"position:x",
+		0.0,
+		0.24
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+
+func animate_archer_draw(
+	art: CombatArcherArt,
+	direction: float
+) -> void:
+	art.position = Vector2.ZERO
+	art.rotation = 0.0
+
+	var draw_tween := create_tween()
+
+	# Pull backward as though drawing the bowstring.
+	draw_tween.tween_property(
+		art,
+		"position:x",
+		-direction * 7.0,
+		0.24
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	# Hold the drawn bow for a moment.
+	draw_tween.tween_interval(0.12)
+
+	await draw_tween.finished
+
+
+func animate_archer_release(
+	art: CombatArcherArt,
+	direction: float
+) -> void:
+	var release_tween := create_tween()
+
+	# Snap forward as the bowstring releases.
+	release_tween.tween_property(
+		art,
+		"position:x",
+		direction * 3.0,
+		0.06
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+	release_tween.tween_property(
+		art,
+		"position",
+		Vector2.ZERO,
+		0.15
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	await release_tween.finished
+
+
+func animate_archer_arrow(
+	attacking_sprite: ColorRect,
+	defending_sprite: ColorRect,
+	direction: float
+) -> void:
+	# Determine arrow positions in the overlay's local coordinates.
+	var start_point: Vector2 = (
+		attacking_sprite.position
+		+ Vector2(
+			SPRITE_SIZE.x * 0.5 + direction * 26.0,
+			SPRITE_SIZE.y * 0.46
+		)
+	)
+
+	var end_point: Vector2 = (
+		defending_sprite.position
+		+ Vector2(
+			SPRITE_SIZE.x * 0.5 - direction * 12.0,
+			SPRITE_SIZE.y * 0.46
+		)
+	)
+
+	# Create a temporary node for the projectile.
+	var arrow := Node2D.new()
+	arrow.name = "CombatArrow"
+	arrow.position = start_point
+	arrow.z_index = 10
+	add_child(arrow)
+
+	# Wooden shaft.
+	var shaft := Polygon2D.new()
+	shaft.color = Color("#8b5a35")
+	shaft.polygon = PackedVector2Array([
+		Vector2(-direction * 18.0, -2.0),
+		Vector2(direction * 12.0, -2.0),
+		Vector2(direction * 12.0, 2.0),
+		Vector2(-direction * 18.0, 2.0)
+	])
+	arrow.add_child(shaft)
+
+	# Metal arrowhead.
+	var head := Polygon2D.new()
+	head.color = Color("#d5dce4")
+	head.polygon = PackedVector2Array([
+		Vector2(direction * 12.0, -5.0),
+		Vector2(direction * 24.0, 0.0),
+		Vector2(direction * 12.0, 5.0)
+	])
+	arrow.add_child(head)
+
+	# Upper feather.
+	var upper_feather := Polygon2D.new()
+	upper_feather.color = Color("#e8e0c9")
+	upper_feather.polygon = PackedVector2Array([
+		Vector2(-direction * 18.0, 0.0),
+		Vector2(-direction * 24.0, -7.0),
+		Vector2(-direction * 12.0, -2.0)
+	])
+	arrow.add_child(upper_feather)
+
+	# Lower feather.
+	var lower_feather := Polygon2D.new()
+	lower_feather.color = Color("#c9b99a")
+	lower_feather.polygon = PackedVector2Array([
+		Vector2(-direction * 18.0, 0.0),
+		Vector2(-direction * 24.0, 7.0),
+		Vector2(-direction * 12.0, 2.0)
+	])
+	arrow.add_child(lower_feather)
+
+	# Fly straight toward the defender.
+	var flight_tween := create_tween()
+
+	flight_tween.tween_property(
+		arrow,
+		"position",
+		end_point,
+		0.28
+	).set_trans(Tween.TRANS_LINEAR)
+
+	await flight_tween.finished
+
+	# Remove the projectile when it reaches the defender.
+	arrow.queue_free()
