@@ -2284,8 +2284,10 @@ func setup_ground_details() -> void:
 
 
 
+
 func update_ground_details() -> void:
 	for child in ground_details.get_children():
+		ground_details.remove_child(child)
 		child.queue_free()
 
 	if battlefield_grid == null:
@@ -2300,36 +2302,44 @@ func update_ground_details() -> void:
 		player_unit.grid_position
 	)
 
-	var enemy_is_grassland: bool = (
+	var enemy_is_natural: bool = (
+		enemy_terrain == null
+		or enemy_terrain.terrain_type == TerrainResource.TerrainType.FOREST
+	)
+
+	var player_is_natural: bool = (
+		player_terrain == null
+		or player_terrain.terrain_type == TerrainResource.TerrainType.FOREST
+	)
+
+	# Only combine ordinary grassland and forest ground.
+	# Keep forts, lava, scorched ground, desert and snow separate.
+	var use_shared_shading: bool = (
 		battlefield_grid.biome == BattlefieldGrid.Biome.GRASSLAND
-		and (enemy_terrain == null
-			or enemy_terrain.terrain_type not in [
-				TerrainResource.TerrainType.FOREST,
-				TerrainResource.TerrainType.FORT,
-				TerrainResource.TerrainType.LAVA
-			])
+		and enemy_is_natural
+		and player_is_natural
 		and not battlefield_grid.is_adjacent_to_lava(
 			enemy_unit.grid_position
 		)
-	)
-
-	var player_is_grassland: bool = (
-		battlefield_grid.biome == BattlefieldGrid.Biome.GRASSLAND
-		and (player_terrain == null
-			or player_terrain.terrain_type not in [
-				TerrainResource.TerrainType.FOREST,
-				TerrainResource.TerrainType.FORT,
-				TerrainResource.TerrainType.LAVA
-			])
 		and not battlefield_grid.is_adjacent_to_lava(
 			player_unit.grid_position
 		)
 	)
 
-	if enemy_is_grassland and player_is_grassland:
-		add_grassland_ground_details(0.0, size.x)
+	if use_shared_shading:
+		# Draw the large shading polygons once across the full screen.
+		add_grassland_ground_shading(0.0, size.x)
+
+		# Keep each side's terrain-specific small details.
+		add_unit_ground_details(
+			enemy_unit, 0.0, half_width, false
+		)
+		add_unit_ground_details(
+			player_unit, half_width, half_width, false
+		)
 		return
 
+	# All other terrain combinations retain their original behaviour.
 	add_unit_ground_details(enemy_unit, 0.0, half_width)
 	add_unit_ground_details(player_unit, half_width, half_width)
 
@@ -2338,24 +2348,25 @@ func update_ground_details() -> void:
 func add_unit_ground_details(
 	unit: Unit,
 	start_x: float,
-	section_width: float
+	section_width: float,
+	draw_shading: bool = true
 ) -> void:
 	var terrain: TerrainResource = battlefield_grid.get_terrain_at(
 		unit.grid_position
 	)
-	
+
 	# Scorched ground takes priority over ordinary terrain details.
-	# Lava tiles retain their existing lava decorations.
 	if terrain == null or terrain.terrain_type != TerrainResource.TerrainType.LAVA:
 		if battlefield_grid.is_adjacent_to_lava(unit.grid_position):
 			add_scorched_ground_details(start_x, section_width)
 			return
 
-	# Special terrain will get its own ground decorations later.
 	if terrain != null:
 		match terrain.terrain_type:
 			TerrainResource.TerrainType.FOREST:
-				add_forest_ground_details(start_x, section_width)
+				add_forest_ground_details(
+					start_x, section_width, draw_shading
+				)
 				return
 
 			TerrainResource.TerrainType.FORT:
@@ -2368,13 +2379,16 @@ func add_unit_ground_details(
 
 	match battlefield_grid.biome:
 		BattlefieldGrid.Biome.GRASSLAND:
-			add_grassland_ground_details(start_x, section_width)
+			add_grassland_ground_details(
+				start_x, section_width, draw_shading
+			)
 
 		BattlefieldGrid.Biome.DESERT:
 			add_desert_ground_details(start_x, section_width)
 
 		BattlefieldGrid.Biome.SNOW:
 			add_snow_ground_details(start_x, section_width)
+
 
 func add_scorched_ground_details(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
@@ -2440,9 +2454,14 @@ func add_scorched_ground_details(start_x: float, section_width: float) -> void:
 			ground_details.add_child(fragment)
 
 
-func add_grassland_ground_details(start_x: float, section_width: float) -> void:
+func add_grassland_ground_details(
+		start_x: float,
+		section_width: float,
+		draw_shading: bool = true
+	) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
-	add_grassland_ground_shading(start_x, section_width)
+	if draw_shading:
+		add_grassland_ground_shading(start_x, section_width)
 	var grass_dark := Color("#355c32")
 	var grass_base := Color("#56804a")
 	var grass_light := Color("#a3c17e")
@@ -2684,7 +2703,11 @@ func get_battle_sky_color() -> Color:
 
 
 
-func add_forest_ground_details(start_x: float, section_width: float) -> void:
+func add_forest_ground_details(
+		start_x: float,
+		section_width: float,
+		draw_shading: bool = true
+	) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
 
 	var leaf_green := Color("#78a365")
@@ -2700,7 +2723,8 @@ func add_forest_ground_details(start_x: float, section_width: float) -> void:
 	var grass_light := Color("#81a66b")
 
 	# Add the broad shading first so individual details sit on top.
-	add_forest_ground_shading(start_x, section_width)
+	if draw_shading:
+		add_forest_ground_shading(start_x, section_width)
 
 	# Preserve the original 18 positions and spacing.
 	for i in range(18):
