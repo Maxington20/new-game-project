@@ -1694,57 +1694,246 @@ func add_forest_scenery(center: Vector2) -> void:
 
 
 
+
 func add_desert_forest_scenery(center: Vector2) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
 
+	var outline: Color = Color("#383638")
+	var trunk_base: Color = Color("#99724c")
+	var trunk_light: Color = Color("#c19a68")
+	var trunk_shadow: Color = Color("#694c39")
+	var leaf_base: Color = Color("#647b43")
+	var leaf_light: Color = Color("#9aac63")
+	var leaf_shadow: Color = Color("#3d563b")
+
 	var tree_data: Array[Dictionary] = [
-		{"offset": -110.0, "height": 75.0},
-		{"offset": -55.0, "height": 95.0},
-		{"offset": 55.0, "height": 85.0},
-		{"offset": 110.0, "height": 70.0}
+		{"offset": -110.0, "height": 76.0, "lean": -7.0, "scale": 0.90},
+		{"offset": -55.0, "height": 96.0, "lean": 5.0, "scale": 1.05},
+		{"offset": 55.0, "height": 87.0, "lean": -5.0, "scale": 1.00},
+		{"offset": 110.0, "height": 70.0, "lean": 7.0, "scale": 0.85}
 	]
 
 	for data in tree_data:
-		var tree_x: float = center.x + data["offset"]
-		var tree_height: float = data["height"]
+		var tree_x: float = center.x + float(data["offset"])
+		var tree_height: float = float(data["height"])
+		var lean: float = float(data["lean"])
+		var tree_scale: float = float(data["scale"])
 
-		# Narrow sandy-brown trunk.
-		var trunk := ColorRect.new()
-		trunk.color = Color("#94704b")
-		trunk.size = Vector2(10, tree_height)
-		trunk.position = Vector2(tree_x + 12, ground_y - tree_height)
-		trunk.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		terrain_scenery.add_child(trunk)
+		var tree := Node2D.new()
+		tree.position = Vector2(tree_x, ground_y)
+		tree.scale = Vector2(tree_scale, tree_scale)
+		terrain_scenery.add_child(tree)
 
-		# Palm leaves spread outward from the top.
-		var leaf_color := Color("#647b3f")
-		var leaf_highlight := Color("#91a65c")
-		var crown := Vector2(tree_x + 17, ground_y - tree_height + 6)
+		var trunk_top := Vector2(lean, -tree_height)
+		var trunk_bottom := Vector2(0, 0)
 
-		var leaves: Array[PackedVector2Array] = [
-			PackedVector2Array([
-				crown, crown + Vector2(-42, -12),
-				crown + Vector2(-34, 4)
-			]),
-			PackedVector2Array([
-				crown, crown + Vector2(42, -12),
-				crown + Vector2(34, 4)
-			]),
-			PackedVector2Array([
-				crown, crown + Vector2(-26, -28),
-				crown + Vector2(-10, -12)
-			]),
-			PackedVector2Array([
-				crown, crown + Vector2(26, -28),
-				crown + Vector2(10, -12)
+		# Small ground shadow.
+		var ground_shadow := Polygon2D.new()
+		ground_shadow.polygon = PackedVector2Array([
+			Vector2(-18, 0),
+			Vector2(12, -3),
+			Vector2(28, 1),
+			Vector2(10, 5),
+			Vector2(-15, 4)
+		])
+		ground_shadow.color = Color(0.15, 0.13, 0.12, 0.25)
+		tree.add_child(ground_shadow)
+
+		# Tapered trunk silhouette.
+		var trunk_outline := Polygon2D.new()
+		trunk_outline.polygon = PackedVector2Array([
+			trunk_bottom + Vector2(-8, 0),
+			trunk_top + Vector2(-5, 0),
+			trunk_top + Vector2(5, 0),
+			trunk_bottom + Vector2(8, 0)
+		])
+		trunk_outline.color = outline
+		tree.add_child(trunk_outline)
+
+		var trunk_fill := Polygon2D.new()
+		trunk_fill.polygon = PackedVector2Array([
+			trunk_bottom + Vector2(-5, -2),
+			trunk_top + Vector2(-3, 2),
+			trunk_top + Vector2(3, 2),
+			trunk_bottom + Vector2(5, -2)
+		])
+		trunk_fill.color = trunk_base
+		tree.add_child(trunk_fill)
+
+		# Sunlit side of the trunk.
+		var trunk_highlight := Polygon2D.new()
+		trunk_highlight.polygon = PackedVector2Array([
+			trunk_bottom + Vector2(-5, -2),
+			trunk_top + Vector2(-3, 2),
+			trunk_top + Vector2(-1, 2),
+			trunk_bottom + Vector2(-1, -2)
+		])
+		trunk_highlight.color = trunk_light
+		tree.add_child(trunk_highlight)
+
+		# Shadowed side.
+		var trunk_dark := Polygon2D.new()
+		trunk_dark.polygon = PackedVector2Array([
+			trunk_top + Vector2(1, 2),
+			trunk_top + Vector2(3, 2),
+			trunk_bottom + Vector2(5, -2),
+			trunk_bottom + Vector2(1, -2)
+		])
+		trunk_dark.color = trunk_shadow
+		tree.add_child(trunk_dark)
+
+		# Segmented bark bands.
+		for band_index in range(5):
+			var t: float = (float(band_index) + 1.0) / 6.0
+			var band_center: Vector2 = trunk_top.lerp(
+				trunk_bottom, t
+			)
+
+			var band := Polygon2D.new()
+			band.polygon = PackedVector2Array([
+				band_center + Vector2(-4, -1),
+				band_center + Vector2(0, 1),
+				band_center + Vector2(4, -1),
+				band_center + Vector2(4, 1),
+				band_center + Vector2(0, 3),
+				band_center + Vector2(-4, 1)
 			])
+			band.color = trunk_shadow
+			tree.add_child(band)
+
+		# Palm crown.
+		var crown: Vector2 = trunk_top + Vector2(0, -3)
+
+		# Each frond has a broad silhouette and a separate
+		# cel-shaded surface, instead of being a flat triangle.
+		var fronds: Array[Dictionary] = [
+			{
+				"tip": Vector2(-47, 4),
+				"mid": Vector2(-27, -14),
+				"width": 10.0
+			},
+			{
+				"tip": Vector2(47, 4),
+				"mid": Vector2(27, -14),
+				"width": 10.0
+			},
+			{
+				"tip": Vector2(-34, -24),
+				"mid": Vector2(-19, -28),
+				"width": 9.0
+			},
+			{
+				"tip": Vector2(34, -24),
+				"mid": Vector2(19, -28),
+				"width": 9.0
+			},
+			{
+				"tip": Vector2(-11, -38),
+				"mid": Vector2(-9, -31),
+				"width": 7.0
+			},
+			{
+				"tip": Vector2(13, -37),
+				"mid": Vector2(9, -31),
+				"width": 7.0
+			}
 		]
 
-		for i in range(leaves.size()):
-			var leaf := Polygon2D.new()
-			leaf.polygon = leaves[i]
-			leaf.color = leaf_highlight if i >= 2 else leaf_color
-			terrain_scenery.add_child(leaf)
+		for frond_index in range(fronds.size()):
+			var frond: Dictionary = fronds[frond_index]
+			var tip: Vector2 = crown + Vector2(frond["tip"])
+			var mid: Vector2 = crown + Vector2(frond["mid"])
+			var frond_width: float = float(frond["width"])
+
+			var direction: Vector2 = (
+				tip - crown
+			).normalized()
+			var normal: Vector2 = Vector2(
+				-direction.y,
+				direction.x
+			)
+
+			var frond_outline := Polygon2D.new()
+			frond_outline.polygon = PackedVector2Array([
+				crown + normal * 4,
+				mid + normal * frond_width,
+				tip,
+				mid - normal * frond_width * 0.75,
+				crown - normal * 4
+			])
+			frond_outline.color = outline
+			tree.add_child(frond_outline)
+
+			var frond_fill := Polygon2D.new()
+			frond_fill.polygon = PackedVector2Array([
+				crown + normal * 2,
+				mid + normal * (frond_width - 3),
+				tip - direction * 3,
+				mid - normal * (frond_width - 3) * 0.75,
+				crown - normal * 2
+			])
+			frond_fill.color = leaf_base
+			tree.add_child(frond_fill)
+
+			# Bright upper surface.
+			var frond_light := Polygon2D.new()
+			frond_light.polygon = PackedVector2Array([
+				crown + normal * 2,
+				mid + normal * (frond_width - 3),
+				tip - direction * 3,
+				mid,
+				crown
+			])
+			frond_light.color = leaf_light
+			tree.add_child(frond_light)
+
+			# Dark underside.
+			var frond_dark := Polygon2D.new()
+			frond_dark.polygon = PackedVector2Array([
+				crown,
+				mid,
+				tip - direction * 3,
+				mid - normal * (frond_width - 3) * 0.75,
+				crown - normal * 2
+			])
+			frond_dark.color = leaf_shadow
+			tree.add_child(frond_dark)
+
+		# Crown centre hides the overlapping frond bases.
+		var crown_outline := Polygon2D.new()
+		crown_outline.polygon = PackedVector2Array([
+			crown + Vector2(-9, -3),
+			crown + Vector2(-4, -10),
+			crown + Vector2(5, -9),
+			crown + Vector2(10, -2),
+			crown + Vector2(5, 5),
+			crown + Vector2(-6, 5)
+		])
+		crown_outline.color = outline
+		tree.add_child(crown_outline)
+
+		var crown_fill := Polygon2D.new()
+		crown_fill.polygon = PackedVector2Array([
+			crown + Vector2(-6, -3),
+			crown + Vector2(-3, -7),
+			crown + Vector2(4, -6),
+			crown + Vector2(7, -1),
+			crown + Vector2(4, 3),
+			crown + Vector2(-4, 3)
+		])
+		crown_fill.color = leaf_base
+		tree.add_child(crown_fill)
+
+		var crown_highlight := Polygon2D.new()
+		crown_highlight.polygon = PackedVector2Array([
+			crown + Vector2(-5, -3),
+			crown + Vector2(-3, -7),
+			crown + Vector2(2, -6),
+			crown + Vector2(0, -1),
+			crown + Vector2(-4, 0)
+		])
+		crown_highlight.color = leaf_light
+		tree.add_child(crown_highlight)
 
 
 func add_fort_scenery(start_x: float, section_width: float) -> void:
@@ -3052,6 +3241,7 @@ func update_ground_details() -> void:
 
 
 
+
 func add_unit_ground_details(
 	unit: Unit,
 	start_x: float,
@@ -3062,7 +3252,7 @@ func add_unit_ground_details(
 		unit.grid_position
 	)
 
-	# Scorched ground takes priority over ordinary terrain details.
+	# Scorched ground takes priority over ordinary terrain.
 	if terrain == null or terrain.terrain_type != TerrainResource.TerrainType.LAVA:
 		if battlefield_grid.is_adjacent_to_lava(unit.grid_position):
 			add_scorched_ground_details(start_x, section_width)
@@ -3071,9 +3261,13 @@ func add_unit_ground_details(
 	if terrain != null:
 		match terrain.terrain_type:
 			TerrainResource.TerrainType.FOREST:
-				add_forest_ground_details(
-					start_x, section_width, draw_shading
-				)
+				if battlefield_grid.biome == BattlefieldGrid.Biome.DESERT:
+					add_desert_ground_details(start_x, section_width)
+					add_desert_forest_ground_details(start_x, section_width)
+				else:
+					add_forest_ground_details(
+						start_x, section_width, draw_shading
+					)
 				return
 
 			TerrainResource.TerrainType.FORT:
@@ -4736,3 +4930,96 @@ func add_forest_ground_shading(
 	])
 	light_patch.color = Color("#738a60")
 	ground_details.add_child(light_patch)
+
+
+
+
+func add_desert_forest_ground_details(
+	start_x: float,
+	section_width: float
+) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+
+	var oasis_dark: Color = Color("#74835a")
+	var oasis_base: Color = Color("#89976a")
+	var oasis_light: Color = Color("#a7ad79")
+	var dry_grass: Color = Color("#a99d6b")
+	var grass_shadow: Color = Color("#65734f")
+
+	# Small oasis patches near the palms.
+	# These are deliberately localized rather than covering
+	# the entire forest half with green.
+	var patches: Array[Dictionary] = [
+		{"x": 0.24, "width": 65.0, "depth": 14.0},
+		{"x": 0.52, "width": 85.0, "depth": 18.0},
+		{"x": 0.78, "width": 58.0, "depth": 12.0}
+	]
+
+	for patch in patches:
+		var x: float = start_x + section_width * float(patch["x"])
+		var width: float = float(patch["width"])
+		var depth: float = float(patch["depth"])
+		var y: float = ground_y + 10.0
+
+		var shadow := Polygon2D.new()
+		shadow.polygon = PackedVector2Array([
+			Vector2(x - width * 0.55, y + 2),
+			Vector2(x - width * 0.32, y - 2),
+			Vector2(x + width * 0.18, y - 4),
+			Vector2(x + width * 0.50, y + 1),
+			Vector2(x + width * 0.42, y + depth),
+			Vector2(x - width * 0.25, y + depth + 3),
+			Vector2(x - width * 0.52, y + depth * 0.65)
+		])
+		shadow.color = oasis_dark
+		ground_details.add_child(shadow)
+
+		var patch_fill := Polygon2D.new()
+		patch_fill.polygon = PackedVector2Array([
+			Vector2(x - width * 0.43, y + 2),
+			Vector2(x - width * 0.22, y),
+			Vector2(x + width * 0.18, y - 1),
+			Vector2(x + width * 0.40, y + 3),
+			Vector2(x + width * 0.29, y + depth - 2),
+			Vector2(x - width * 0.25, y + depth),
+			Vector2(x - width * 0.40, y + depth * 0.55)
+		])
+		patch_fill.color = oasis_base
+		ground_details.add_child(patch_fill)
+
+		# Angular sunlit surface.
+		var highlight := Polygon2D.new()
+		highlight.polygon = PackedVector2Array([
+			Vector2(x - width * 0.37, y + 3),
+			Vector2(x - width * 0.22, y),
+			Vector2(x + width * 0.18, y),
+			Vector2(x + width * 0.06, y + depth * 0.45),
+			Vector2(x - width * 0.30, y + depth * 0.38)
+		])
+		highlight.color = oasis_light
+		ground_details.add_child(highlight)
+
+	# Sparse vegetation and dry grass.
+	# The deterministic positions keep the scenery stable.
+	for i in range(13):
+		var x: float = (
+			start_x + 18.0
+			+ float((i * 47 + 13) % int(maxf(section_width - 36.0, 1.0)))
+		)
+		var y: float = ground_y + 15.0 + float((i * 31) % 95)
+
+		var height: float = 4.0 + float(i % 3) * 2.0
+		var width: float = 4.0 + float(i % 2) * 2.0
+
+		var grass := Polygon2D.new()
+		grass.polygon = PackedVector2Array([
+			Vector2(x - width, y - height * 0.65),
+			Vector2(x, y - height * 0.25),
+			Vector2(x + 1, y - height),
+			Vector2(x + 2, y - height * 0.30),
+			Vector2(x + width, y - height * 0.55),
+			Vector2(x + 2, y + 1),
+			Vector2(x - 1, y + 1)
+		])
+		grass.color = dry_grass if i % 3 == 0 else grass_shadow
+		ground_details.add_child(grass)
