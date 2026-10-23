@@ -1332,11 +1332,9 @@ func setup_terrain_scenery() -> void:
 
 
 
-
-
-
 func update_terrain_scenery() -> void:
 	for child in terrain_scenery.get_children():
+		terrain_scenery.remove_child(child)
 		child.queue_free()
 
 	if battlefield_grid == null:
@@ -1351,38 +1349,49 @@ func update_terrain_scenery() -> void:
 		player_unit.grid_position
 	)
 
-	var enemy_is_grassland: bool = (
-		battlefield_grid.biome == BattlefieldGrid.Biome.GRASSLAND
-		and (enemy_terrain == null
-			or enemy_terrain.terrain_type not in [
-				TerrainResource.TerrainType.FOREST,
-				TerrainResource.TerrainType.FORT,
-				TerrainResource.TerrainType.LAVA
-			])
-		and not battlefield_grid.is_adjacent_to_lava(
-			enemy_unit.grid_position
-		)
+	var enemy_is_natural: bool = (
+		enemy_terrain == null
+		or enemy_terrain.terrain_type not in [
+			TerrainResource.TerrainType.FOREST,
+			TerrainResource.TerrainType.FORT,
+			TerrainResource.TerrainType.LAVA
+		]
 	)
 
-	var player_is_grassland: bool = (
-		battlefield_grid.biome == BattlefieldGrid.Biome.GRASSLAND
-		and (player_terrain == null
-			or player_terrain.terrain_type not in [
-				TerrainResource.TerrainType.FOREST,
-				TerrainResource.TerrainType.FORT,
-				TerrainResource.TerrainType.LAVA
-			])
-		and not battlefield_grid.is_adjacent_to_lava(
-			player_unit.grid_position
-		)
+	var player_is_natural: bool = (
+		player_terrain == null
+		or player_terrain.terrain_type not in [
+			TerrainResource.TerrainType.FOREST,
+			TerrainResource.TerrainType.FORT,
+			TerrainResource.TerrainType.LAVA
+		]
 	)
 
-	if enemy_is_grassland and player_is_grassland:
-		add_grassland_scenery(0.0, size.x)
-		return
+	var enemy_is_scorched: bool = battlefield_grid.is_adjacent_to_lava(
+		enemy_unit.grid_position
+	)
+	var player_is_scorched: bool = battlefield_grid.is_adjacent_to_lava(
+		player_unit.grid_position
+	)
+
+	if (
+		enemy_is_natural
+		and player_is_natural
+		and not enemy_is_scorched
+		and not player_is_scorched
+	):
+		match battlefield_grid.biome:
+			BattlefieldGrid.Biome.GRASSLAND:
+				add_grassland_scenery(0.0, size.x)
+				return
+
+			BattlefieldGrid.Biome.DESERT:
+				add_desert_scenery(0.0, size.x)
+				return
 
 	add_unit_terrain_scenery(enemy_unit, 0.0, half_width)
 	add_unit_terrain_scenery(player_unit, half_width, half_width)
+
 
 
 func add_unit_terrain_scenery(
@@ -2298,50 +2307,293 @@ func add_lava_scenery(start_x: float, section_width: float) -> void:
 		terrain_scenery.add_child(rock_shadow)
 
 
+
 func add_desert_scenery(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
 
-	# Distant sand dunes.
-	var dune_color := Color("#d8be91")
-	var dune_shadow := Color("#b99a6e")
+	var outline: Color = Color("#403b3c")
+	var dune_base: Color = Color("#d8be91")
+	var dune_light: Color = Color("#ead3a5")
+	var dune_dark: Color = Color("#b99a6e")
+	var dune_deep: Color = Color("#9c805e")
 
-	var dune := Polygon2D.new()
-	dune.polygon = PackedVector2Array([
+	# Use different dune formations on the two sides.
+	# This avoids the mirrored, repeated appearance.
+	var is_right_side: bool = start_x >= size.x * 0.45
+
+	var peaks: PackedVector2Array
+
+	if is_right_side:
+		peaks = PackedVector2Array([
+			Vector2(0.00, 15),
+			Vector2(0.12, 28),
+			Vector2(0.25, 63),
+			Vector2(0.39, 43),
+			Vector2(0.55, 25),
+			Vector2(0.73, 39),
+			Vector2(0.87, 53),
+			Vector2(1.00, 18)
+		])
+	else:
+		peaks = PackedVector2Array([
+			Vector2(0.00, 18),
+			Vector2(0.13, 37),
+			Vector2(0.25, 65),
+			Vector2(0.40, 43),
+			Vector2(0.55, 29),
+			Vector2(0.70, 45),
+			Vector2(0.82, 57),
+			Vector2(1.00, 16)
+		])
+
+	# Main dune silhouette.
+	var outline_points := PackedVector2Array()
+	outline_points.append(Vector2(start_x, ground_y))
+
+	for point in peaks:
+		outline_points.append(
+			Vector2(
+				start_x + point.x * section_width,
+				ground_y - point.y
+			)
+		)
+
+	outline_points.append(Vector2(start_x + section_width, ground_y))
+
+	var dune_outline := Polygon2D.new()
+	dune_outline.polygon = outline_points
+	dune_outline.color = outline
+	terrain_scenery.add_child(dune_outline)
+
+	# Slightly inset dune fill.
+	var fill_points := PackedVector2Array()
+	fill_points.append(Vector2(start_x, ground_y))
+
+	for point in peaks:
+		fill_points.append(
+			Vector2(
+				start_x + point.x * section_width,
+				ground_y - point.y + 3.0
+			)
+		)
+
+	fill_points.append(Vector2(start_x + section_width, ground_y))
+
+	var dune_fill := Polygon2D.new()
+	dune_fill.polygon = fill_points
+	dune_fill.color = dune_base
+	terrain_scenery.add_child(dune_fill)
+
+	# Sun-facing highlight on the first major dune.
+	var first_peak: Vector2 = peaks[2]
+	var first_left: Vector2 = peaks[1]
+	var first_right: Vector2 = peaks[3]
+
+	var highlight := Polygon2D.new()
+	highlight.polygon = PackedVector2Array([
+		Vector2(
+			start_x + first_left.x * section_width,
+			ground_y - first_left.y + 3
+		),
+		Vector2(
+			start_x + first_peak.x * section_width,
+			ground_y - first_peak.y + 3
+		),
+		Vector2(
+			start_x + first_right.x * section_width,
+			ground_y - first_right.y + 3
+		),
+		Vector2(
+			start_x + (first_peak.x + 0.04) * section_width,
+			ground_y - first_peak.y * 0.68
+		),
+		Vector2(
+			start_x + (first_left.x + 0.04) * section_width,
+			ground_y - first_left.y * 0.55
+		)
+	])
+	highlight.color = dune_light
+	terrain_scenery.add_child(highlight)
+
+	# Hard-edged shadow on the descending slope.
+	var shadow := Polygon2D.new()
+	shadow.polygon = PackedVector2Array([
+		Vector2(
+			start_x + first_peak.x * section_width,
+			ground_y - first_peak.y + 3
+		),
+		Vector2(
+			start_x + first_right.x * section_width,
+			ground_y - first_right.y + 3
+		),
+		Vector2(
+			start_x + 0.57 * section_width,
+			ground_y - 18
+		),
+		Vector2(
+			start_x + 0.39 * section_width,
+			ground_y - 19
+		)
+	])
+	shadow.color = dune_dark
+	terrain_scenery.add_child(shadow)
+
+	# Secondary dune shading.
+	var second_peak: Vector2 = peaks[6]
+
+	var second_highlight := Polygon2D.new()
+	second_highlight.polygon = PackedVector2Array([
+		Vector2(
+			start_x + peaks[5].x * section_width,
+			ground_y - peaks[5].y + 3
+		),
+		Vector2(
+			start_x + second_peak.x * section_width,
+			ground_y - second_peak.y + 3
+		),
+		Vector2(
+			start_x + (second_peak.x - 0.05) * section_width,
+			ground_y - second_peak.y * 0.65
+		)
+	])
+	second_highlight.color = dune_light
+	terrain_scenery.add_child(second_highlight)
+
+	var second_shadow := Polygon2D.new()
+	second_shadow.polygon = PackedVector2Array([
+		Vector2(
+			start_x + second_peak.x * section_width,
+			ground_y - second_peak.y + 3
+		),
+		Vector2(
+			start_x + section_width,
+			ground_y - peaks[7].y + 3
+		),
+		Vector2(start_x + section_width, ground_y),
+		Vector2(
+			start_x + 0.91 * section_width,
+			ground_y - 12
+		)
+	])
+	second_shadow.color = dune_dark
+	terrain_scenery.add_child(second_shadow)
+
+	# Lower dune with a different silhouette on each side.
+	var front_peak_x: float = 0.43 if is_right_side else 0.36
+	var front_peak_height: float = 28.0 if is_right_side else 34.0
+
+	var front_dune := Polygon2D.new()
+	front_dune.polygon = PackedVector2Array([
 		Vector2(start_x, ground_y),
-		Vector2(start_x, ground_y - 20),
-		Vector2(start_x + section_width * 0.25, ground_y - 65),
-		Vector2(start_x + section_width * 0.55, ground_y - 30),
-		Vector2(start_x + section_width * 0.8, ground_y - 55),
-		Vector2(start_x + section_width, ground_y - 15),
+		Vector2(start_x + section_width * 0.14, ground_y - 12),
+		Vector2(
+			start_x + section_width * front_peak_x,
+			ground_y - front_peak_height
+		),
+		Vector2(start_x + section_width * 0.72, ground_y - 9),
 		Vector2(start_x + section_width, ground_y)
 	])
-	dune.color = dune_color
-	terrain_scenery.add_child(dune)
+	front_dune.color = dune_dark
+	terrain_scenery.add_child(front_dune)
 
-	# A smaller dune in front.
-	var foreground_dune := Polygon2D.new()
-	foreground_dune.polygon = PackedVector2Array([
-		Vector2(start_x, ground_y),
-		Vector2(start_x + section_width * 0.15, ground_y - 15),
-		Vector2(start_x + section_width * 0.4, ground_y - 35),
-		Vector2(start_x + section_width * 0.7, ground_y - 10),
-		Vector2(start_x + section_width, ground_y),
+	var front_highlight := Polygon2D.new()
+	front_highlight.polygon = PackedVector2Array([
+		Vector2(start_x + section_width * 0.14, ground_y - 12),
+		Vector2(
+			start_x + section_width * front_peak_x,
+			ground_y - front_peak_height
+		),
+		Vector2(
+			start_x + section_width * (front_peak_x + 0.08),
+			ground_y - front_peak_height * 0.72
+		),
+		Vector2(start_x + section_width * 0.27, ground_y - 15)
 	])
-	foreground_dune.color = dune_shadow
-	terrain_scenery.add_child(foreground_dune)
+	front_highlight.color = dune_base
+	terrain_scenery.add_child(front_highlight)
 
-	# Small rocks along the ground.
-	for i in range(4):
-		var rock := ColorRect.new()
-		rock.color = Color("#897760")
-		rock.size = Vector2(12 + (i % 2) * 6, 6 + (i % 3) * 3)
-		rock.position = Vector2(
-			start_x + 30.0 + i * (section_width - 60.0) / 4.0,
-			ground_y - rock.size.y
+	var front_shadow := Polygon2D.new()
+	front_shadow.polygon = PackedVector2Array([
+		Vector2(
+			start_x + section_width * front_peak_x,
+			ground_y - front_peak_height
+		),
+		Vector2(start_x + section_width * 0.72, ground_y - 9),
+		Vector2(start_x + section_width, ground_y),
+		Vector2(start_x + section_width * 0.61, ground_y),
+		Vector2(
+			start_x + section_width * (front_peak_x + 0.08),
+			ground_y - front_peak_height * 0.72
 		)
-		rock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	])
+	front_shadow.color = dune_deep
+	terrain_scenery.add_child(front_shadow)
+
+	# Scattered horizon rocks with varied positions and sizes.
+	var rock_positions: PackedVector2Array
+
+	if is_right_side:
+		rock_positions = PackedVector2Array([
+			Vector2(0.09, -2),
+			Vector2(0.31, 3),
+			Vector2(0.58, -1),
+			Vector2(0.84, 4)
+		])
+	else:
+		rock_positions = PackedVector2Array([
+			Vector2(0.07, 3),
+			Vector2(0.34, -2),
+			Vector2(0.65, 4),
+			Vector2(0.89, -1)
+		])
+
+	for i in range(rock_positions.size()):
+		var rock_x: float = (
+			start_x + section_width * rock_positions[i].x
+		)
+		var rock_y: float = ground_y + rock_positions[i].y
+
+		var rock_height: float = 6.0 + float((i * 7 + int(is_right_side) * 3) % 7)
+		var rock_width: float = 11.0 + float((i * 5 + int(is_right_side) * 4) % 10)
+
+		var rock := Node2D.new()
+		rock.position = Vector2(rock_x, rock_y)
 		terrain_scenery.add_child(rock)
 
+		var rock_outline := Polygon2D.new()
+		rock_outline.polygon = PackedVector2Array([
+			Vector2(-rock_width * 0.55, 0),
+			Vector2(-rock_width * 0.38, -rock_height * 0.65),
+			Vector2(-rock_width * 0.05, -rock_height),
+			Vector2(rock_width * 0.32, -rock_height * 0.80),
+			Vector2(rock_width * 0.55, -rock_height * 0.25),
+			Vector2(rock_width * 0.60, 0)
+		])
+		rock_outline.color = outline
+		rock.add_child(rock_outline)
+
+		var rock_fill := Polygon2D.new()
+		rock_fill.polygon = PackedVector2Array([
+			Vector2(-rock_width * 0.42, -1),
+			Vector2(-rock_width * 0.30, -rock_height * 0.60),
+			Vector2(-rock_width * 0.05, -rock_height + 2),
+			Vector2(rock_width * 0.26, -rock_height * 0.70),
+			Vector2(rock_width * 0.43, -rock_height * 0.20),
+			Vector2(rock_width * 0.45, -1)
+		])
+		rock_fill.color = Color("#897760")
+		rock.add_child(rock_fill)
+
+		var rock_light := Polygon2D.new()
+		rock_light.polygon = PackedVector2Array([
+			Vector2(-rock_width * 0.30, -rock_height * 0.60),
+			Vector2(-rock_width * 0.05, -rock_height + 2),
+			Vector2(0, -rock_height * 0.45),
+			Vector2(-rock_width * 0.10, -1),
+			Vector2(-rock_width * 0.42, -1)
+		])
+		rock_light.color = Color("#b3a083")
+		rock.add_child(rock_light)
 
 
 func add_grassland_scenery(start_x: float, section_width: float) -> void:
@@ -2713,6 +2965,7 @@ func setup_ground_details() -> void:
 
 
 
+
 func update_ground_details() -> void:
 	for child in ground_details.get_children():
 		ground_details.remove_child(child)
@@ -2740,13 +2993,8 @@ func update_ground_details() -> void:
 		or player_terrain.terrain_type == TerrainResource.TerrainType.FOREST
 	)
 
-	# Only combine ordinary grassland and forest ground.
-	# Keep forts, lava, scorched ground, desert and snow separate.
-	var use_shared_shading: bool = (
-		battlefield_grid.biome == BattlefieldGrid.Biome.GRASSLAND
-		and enemy_is_natural
-		and player_is_natural
-		and not battlefield_grid.is_adjacent_to_lava(
+	var neither_scorched: bool = (
+		not battlefield_grid.is_adjacent_to_lava(
 			enemy_unit.grid_position
 		)
 		and not battlefield_grid.is_adjacent_to_lava(
@@ -2754,11 +3002,16 @@ func update_ground_details() -> void:
 		)
 	)
 
-	if use_shared_shading:
-		# Draw the large shading polygons once across the full screen.
+	var use_shared_grassland: bool = (
+		battlefield_grid.biome == BattlefieldGrid.Biome.GRASSLAND
+		and enemy_is_natural
+		and player_is_natural
+		and neither_scorched
+	)
+
+	if use_shared_grassland:
 		add_grassland_ground_shading(0.0, size.x)
 
-		# Keep each side's terrain-specific small details.
 		add_unit_ground_details(
 			enemy_unit, 0.0, half_width, false
 		)
@@ -2767,7 +3020,33 @@ func update_ground_details() -> void:
 		)
 		return
 
-	# All other terrain combinations retain their original behaviour.
+	var enemy_is_desert: bool = (
+		enemy_terrain == null
+		or enemy_terrain.terrain_type not in [
+			TerrainResource.TerrainType.FOREST,
+			TerrainResource.TerrainType.FORT,
+			TerrainResource.TerrainType.LAVA
+		]
+	)
+
+	var player_is_desert: bool = (
+		player_terrain == null
+		or player_terrain.terrain_type not in [
+			TerrainResource.TerrainType.FOREST,
+			TerrainResource.TerrainType.FORT,
+			TerrainResource.TerrainType.LAVA
+		]
+	)
+
+	if (
+		battlefield_grid.biome == BattlefieldGrid.Biome.DESERT
+		and enemy_is_desert
+		and player_is_desert
+		and neither_scorched
+	):
+		add_desert_ground_details(0.0, size.x)
+		return
+
 	add_unit_ground_details(enemy_unit, 0.0, half_width)
 	add_unit_ground_details(player_unit, half_width, half_width)
 
@@ -3093,46 +3372,131 @@ func add_grassland_ground_details(
 
 func add_desert_ground_details(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
+	var ground_height: float = maxf(0.0, size.y - ground_y)
 
-	var ripple_dark := Color("#9b805b")
-	var ripple_light := Color("#e4cea3")
-	var pebble_color := Color("#776650")
+	var sand_base: Color = Color("#c5aa7e")
+	var sand_light: Color = Color("#dbc296")
+	var sand_shadow: Color = Color("#b59870")
+	var ripple_dark: Color = Color("#967a58")
+	var ripple_light: Color = Color("#e4cea3")
+	var rock_dark: Color = Color("#554c45")
+	var rock_base: Color = Color("#897760")
+	var rock_light: Color = Color("#b6a080")
 
-	for i in range(16):
-		var x: float = start_x + 12.0 + float(i) * (section_width - 24.0) / 16.0
-		var y: float = ground_y + 18.0 + float((i * 19) % 65)
+	# Broad, irregular shading across the sand.
+	var light_patch := Polygon2D.new()
+	light_patch.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y + 15),
+		Vector2(start_x + section_width * 0.18, ground_y + 8),
+		Vector2(start_x + section_width * 0.42, ground_y + 20),
+		Vector2(start_x + section_width * 0.67, ground_y + 13),
+		Vector2(start_x + section_width, ground_y + 27),
+		Vector2(start_x + section_width, ground_y + 47),
+		Vector2(start_x + section_width * 0.72, ground_y + 35),
+		Vector2(start_x + section_width * 0.38, ground_y + 39),
+		Vector2(start_x, ground_y + 31)
+	])
+	light_patch.color = sand_light
+	light_patch.color.a = 0.42
+	ground_details.add_child(light_patch)
 
-		# Short horizontal marks suggest wind-shaped sand.
-		if i % 3 != 0:
-			var ripple := Line2D.new()
-			ripple.width = 2.0
-			ripple.default_color = ripple_dark if i % 2 == 0 else ripple_light
-			ripple.points = PackedVector2Array([
-				Vector2(x - 7.0, y),
-				Vector2(x + 3.0, y),
-				Vector2(x + 7.0, y - 2.0)
-			])
-			ground_details.add_child(ripple)
+	var lower_shadow := Polygon2D.new()
+	lower_shadow.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y + ground_height * 0.57),
+		Vector2(start_x + section_width * 0.20, ground_y + ground_height * 0.52),
+		Vector2(start_x + section_width * 0.48, ground_y + ground_height * 0.62),
+		Vector2(start_x + section_width * 0.73, ground_y + ground_height * 0.55),
+		Vector2(start_x + section_width, ground_y + ground_height * 0.64),
+		Vector2(start_x + section_width, ground_y + ground_height),
+		Vector2(start_x, ground_y + ground_height)
+	])
+	lower_shadow.color = sand_shadow
+	lower_shadow.color.a = 0.32
+	ground_details.add_child(lower_shadow)
 
-		# Occasional small stones.
-		if i % 5 == 0:
-			var pebble := ColorRect.new()
-			pebble.color = pebble_color
-			pebble.position = Vector2(x + 5.0, y + 6.0)
-			pebble.size = Vector2(5.0, 3.0)
-			pebble.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ground_details.add_child(pebble)
+	# Small wind-shaped sand ripples with varied spacing and length.
+	for i in range(19):
+		var seed: int = i * 37 + 11
+		var fraction: float = fposmod(float(seed * 13), 101.0) / 101.0
+		var x: float = start_x + 12.0 + fraction * (section_width - 24.0)
 
-		# Tiny bright patches break up the flat sand colour.
-		if i % 4 == 0:
-			var highlight := ColorRect.new()
-			highlight.color = ripple_light
-			highlight.position = Vector2(x - 9.0, y + 10.0)
-			highlight.size = Vector2(9.0, 2.0)
-			highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ground_details.add_child(highlight)
+		var depth: float = fposmod(float(seed * 23), 97.0) / 97.0
+		var y: float = ground_y + 15.0 + depth * maxf(1.0, ground_height - 25.0)
 
+		var ripple_width: float = 7.0 + float(seed % 12)
 
+		var ripple := Line2D.new()
+		ripple.width = 1.5 if i % 3 == 0 else 2.0
+		ripple.default_color = ripple_light if i % 4 == 0 else ripple_dark
+		ripple.points = PackedVector2Array([
+			Vector2(x - ripple_width * 0.5, y + 1),
+			Vector2(x - ripple_width * 0.15, y - 1),
+			Vector2(x + ripple_width * 0.25, y),
+			Vector2(x + ripple_width * 0.5, y - 2)
+		])
+		ground_details.add_child(ripple)
+
+	# Scattered angular stones.
+	for i in range(9):
+		var seed: int = i * 43 + 17
+		var x_fraction: float = fposmod(float(seed * 19), 103.0) / 103.0
+		var y_fraction: float = fposmod(float(seed * 29), 89.0) / 89.0
+
+		var x: float = start_x + 15.0 + x_fraction * (section_width - 30.0)
+		var y: float = ground_y + 20.0 + y_fraction * maxf(1.0, ground_height - 35.0)
+
+		var rock_width: float = 5.0 + float(seed % 6)
+		var rock_height: float = 3.0 + float(seed % 4)
+
+		var rock_outline := Polygon2D.new()
+		rock_outline.polygon = PackedVector2Array([
+			Vector2(x - rock_width * 0.6, y),
+			Vector2(x - rock_width * 0.3, y - rock_height),
+			Vector2(x + rock_width * 0.15, y - rock_height - 1),
+			Vector2(x + rock_width * 0.6, y - 1),
+			Vector2(x + rock_width * 0.5, y + 2),
+			Vector2(x - rock_width * 0.5, y + 2)
+		])
+		rock_outline.color = rock_dark
+		ground_details.add_child(rock_outline)
+
+		var rock_fill := Polygon2D.new()
+		rock_fill.polygon = PackedVector2Array([
+			Vector2(x - rock_width * 0.35, y),
+			Vector2(x - rock_width * 0.20, y - rock_height + 1),
+			Vector2(x + rock_width * 0.10, y - rock_height),
+			Vector2(x + rock_width * 0.40, y),
+			Vector2(x + rock_width * 0.30, y + 1),
+			Vector2(x - rock_width * 0.30, y + 1)
+		])
+		rock_fill.color = rock_base
+		ground_details.add_child(rock_fill)
+
+		var rock_highlight := Polygon2D.new()
+		rock_highlight.polygon = PackedVector2Array([
+			Vector2(x - rock_width * 0.35, y),
+			Vector2(x - rock_width * 0.20, y - rock_height + 1),
+			Vector2(x + rock_width * 0.10, y - rock_height),
+			Vector2(x, y),
+		])
+		rock_highlight.color = rock_light
+		ground_details.add_child(rock_highlight)
+
+	# Sparse brighter grains to keep the sand from looking empty.
+	for i in range(14):
+		var seed: int = i * 31 + 7
+		var x_fraction: float = fposmod(float(seed * 17), 109.0) / 109.0
+		var y_fraction: float = fposmod(float(seed * 11), 83.0) / 83.0
+
+		var grain := ColorRect.new()
+		grain.color = sand_light if i % 2 == 0 else sand_base
+		grain.size = Vector2(3.0 + float(i % 3), 1.5)
+		grain.position = Vector2(
+			start_x + 8.0 + x_fraction * (section_width - 16.0),
+			ground_y + 10.0 + y_fraction * maxf(1.0, ground_height - 20.0)
+		)
+		grain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ground_details.add_child(grain)
 
 func add_desert_sky_details() -> void:
 	var haze_color := Color("#b7a6a0", 0.28)
