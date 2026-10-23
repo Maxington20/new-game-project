@@ -1903,6 +1903,7 @@ func setup_sky_scenery() -> void:
 
 func update_sky_scenery() -> void:
 	for child in sky_scenery.get_children():
+		sky_scenery.remove_child(child)
 		child.queue_free()
 
 	if battlefield_grid == null:
@@ -1912,32 +1913,40 @@ func update_sky_scenery() -> void:
 
 	match battlefield_grid.biome:
 		BattlefieldGrid.Biome.GRASSLAND:
-			# Broad, subtle sky shading behind the existing clouds.
-			var upper_sky := Polygon2D.new()
-			upper_sky.polygon = PackedVector2Array([
-				Vector2(0, 0),
-				Vector2(size.x, 0),
-				Vector2(size.x, size.y * 0.29),
-				Vector2(size.x * 0.7, size.y * 0.32),
-				Vector2(size.x * 0.35, size.y * 0.27),
-				Vector2(0, size.y * 0.31)
+			# Subtle middle-distance atmosphere.
+			# Keep the colour close to the existing sky so the
+			# transition doesn't look like a hard horizontal band.
+			var middle_sky := Polygon2D.new()
+			middle_sky.polygon = PackedVector2Array([
+				Vector2(0, size.y * 0.43),
+				Vector2(size.x * 0.16, size.y * 0.42),
+				Vector2(size.x * 0.34, size.y * 0.45),
+				Vector2(size.x * 0.52, size.y * 0.43),
+				Vector2(size.x * 0.74, size.y * 0.46),
+				Vector2(size.x, size.y * 0.44),
+				Vector2(size.x, size.y),
+				Vector2(0, size.y)
 			])
-			upper_sky.color = Color("#304960")
-			sky_scenery.add_child(upper_sky)
+			middle_sky.color = Color("#39536c")
+			sky_scenery.add_child(middle_sky)
 
+			# A lighter atmospheric layer immediately above the hills.
+			# The hills themselves hide the lower edge.
 			var horizon_sky := Polygon2D.new()
 			horizon_sky.polygon = PackedVector2Array([
-				Vector2(0, size.y * 0.48),
-				Vector2(size.x * 0.28, size.y * 0.46),
-				Vector2(size.x * 0.58, size.y * 0.49),
-				Vector2(size.x, size.y * 0.45),
-				Vector2(size.x, size.y * 0.78),
-				Vector2(0, size.y * 0.78)
+				Vector2(0, size.y * 0.63),
+				Vector2(size.x * 0.2, size.y * 0.61),
+				Vector2(size.x * 0.42, size.y * 0.64),
+				Vector2(size.x * 0.65, size.y * 0.62),
+				Vector2(size.x * 0.84, size.y * 0.64),
+				Vector2(size.x, size.y * 0.61),
+				Vector2(size.x, size.y),
+				Vector2(0, size.y)
 			])
-			horizon_sky.color = Color("#46647b")
+			horizon_sky.color = Color("#415e75")
 			sky_scenery.add_child(horizon_sky)
 
-			# Original cloud positions and count.
+			# Preserve all four original cloud positions.
 			add_pixel_cloud(Vector2(half_width * 0.25, size.y * 0.16))
 			add_pixel_cloud(Vector2(half_width * 0.65, size.y * 0.28))
 			add_pixel_cloud(Vector2(half_width * 1.25, size.y * 0.19))
@@ -1953,101 +1962,118 @@ func update_sky_scenery() -> void:
 
 
 func add_pixel_cloud(position: Vector2) -> void:
-	var outline := Color("#526779")
-	var shadow := Color("#a5bdcc")
-	var base := Color("#d3e1e9")
-	var highlight := Color("#f0f6f8")
+	var outline := Color("#344657")
+	var shadow := Color("#8fa9bb")
+	var base := Color("#cbdce6")
+	var light := Color("#f0f6f8")
 
 	var cloud := Control.new()
 	cloud.position = position
+	cloud.scale = Vector2(1.45, 1.45)
 	cloud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sky_scenery.add_child(cloud)
 
-	# Angular silhouette with a thin, darker outline.
+	# Main irregular silhouette.
 	var silhouette := Polygon2D.new()
 	silhouette.polygon = PackedVector2Array([
-		Vector2(0, 27),
-		Vector2(0, 19),
-		Vector2(7, 19),
-		Vector2(7, 13),
-		Vector2(15, 13),
-		Vector2(15, 6),
-		Vector2(23, 6),
-		Vector2(23, 2),
-		Vector2(43, 2),
-		Vector2(43, 6),
-		Vector2(51, 6),
-		Vector2(51, 13),
-		Vector2(61, 13),
-		Vector2(61, 19),
-		Vector2(72, 19),
-		Vector2(72, 27)
+		Vector2(0, 24),
+		Vector2(2, 17),
+		Vector2(9, 14),
+		Vector2(15, 15),
+		Vector2(18, 8),
+		Vector2(25, 4),
+		Vector2(34, 3),
+		Vector2(40, 7),
+		Vector2(45, 12),
+		Vector2(51, 10),
+		Vector2(59, 13),
+		Vector2(63, 19),
+		Vector2(70, 21),
+		Vector2(72, 27),
+		Vector2(67, 31),
+		Vector2(7, 31),
+		Vector2(0, 28)
 	])
 	silhouette.color = outline
 	cloud.add_child(silhouette)
 
-	# Main cloud body.
+	# Main cloud body, inset slightly from the outline.
 	var body := Polygon2D.new()
 	body.polygon = PackedVector2Array([
-		Vector2(2, 25),
-		Vector2(2, 21),
-		Vector2(9, 21),
-		Vector2(9, 15),
-		Vector2(17, 15),
-		Vector2(17, 8),
-		Vector2(25, 8),
-		Vector2(25, 4),
-		Vector2(41, 4),
-		Vector2(41, 8),
-		Vector2(49, 8),
-		Vector2(49, 15),
-		Vector2(59, 15),
-		Vector2(59, 21),
-		Vector2(70, 21),
-		Vector2(70, 25)
+		Vector2(3, 25),
+		Vector2(5, 19),
+		Vector2(11, 17),
+		Vector2(17, 18),
+		Vector2(21, 10),
+		Vector2(27, 7),
+		Vector2(33, 6),
+		Vector2(38, 9),
+		Vector2(44, 16),
+		Vector2(51, 13),
+		Vector2(57, 16),
+		Vector2(61, 22),
+		Vector2(68, 23),
+		Vector2(69, 28),
+		Vector2(5, 28)
 	])
 	body.color = base
 	cloud.add_child(body)
 
-	# Cel-shaded underside.
+	# Hard-edged underside shadow.
 	var underside := Polygon2D.new()
 	underside.polygon = PackedVector2Array([
-		Vector2(2, 20),
-		Vector2(14, 20),
-		Vector2(19, 17),
-		Vector2(30, 20),
-		Vector2(42, 17),
-		Vector2(53, 20),
-		Vector2(70, 20),
-		Vector2(70, 25),
-		Vector2(2, 25)
+		Vector2(5, 23),
+		Vector2(15, 22),
+		Vector2(23, 25),
+		Vector2(32, 21),
+		Vector2(43, 25),
+		Vector2(53, 22),
+		Vector2(68, 25),
+		Vector2(69, 28),
+		Vector2(5, 28)
 	])
 	underside.color = shadow
 	cloud.add_child(underside)
 
-	# Bright upper surface.
-	var upper_light := Polygon2D.new()
-	upper_light.polygon = PackedVector2Array([
-		Vector2(19, 12),
-		Vector2(25, 7),
-		Vector2(40, 7),
-		Vector2(46, 12),
-		Vector2(40, 15),
-		Vector2(23, 15)
+	# Large upper-left highlight.
+	var upper_highlight := Polygon2D.new()
+	upper_highlight.polygon = PackedVector2Array([
+		Vector2(21, 14),
+		Vector2(25, 9),
+		Vector2(32, 7),
+		Vector2(37, 10),
+		Vector2(41, 16),
+		Vector2(34, 17),
+		Vector2(28, 14)
 	])
-	upper_light.color = highlight
-	cloud.add_child(upper_light)
+	upper_highlight.color = light
+	cloud.add_child(upper_highlight)
 
-	# Small secondary highlight.
-	var side_light := Polygon2D.new()
-	side_light.polygon = PackedVector2Array([
+	# Secondary illuminated lobe.
+	var side_highlight := Polygon2D.new()
+	side_highlight.polygon = PackedVector2Array([
+		Vector2(7, 21),
 		Vector2(11, 18),
-		Vector2(17, 14),
-		Vector2(24, 15),
-		Vector2(20, 19)
+		Vector2(16, 19),
+		Vector2(20, 23),
+		Vector2(13, 24)
 	])
-	side_light.color = highlight
-	cloud.add_child(side_light)
+	side_highlight.color = light
+	cloud.add_child(side_highlight)
+
+	# Right-hand shadow gives the cloud additional volume.
+	var right_shadow := Polygon2D.new()
+	right_shadow.polygon = PackedVector2Array([
+		Vector2(50, 15),
+		Vector2(57, 16),
+		Vector2(61, 22),
+		Vector2(68, 23),
+		Vector2(69, 28),
+		Vector2(56, 27),
+		Vector2(58, 22)
+	])
+	right_shadow.color = shadow
+	cloud.add_child(right_shadow)
 
 
 func setup_ground_details() -> void:
