@@ -1680,17 +1680,20 @@ func add_desert_scenery(start_x: float, section_width: float) -> void:
 		terrain_scenery.add_child(rock)
 
 
+
 func add_grassland_scenery(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
 
-	var distant_hill_color := Color("#729c6a")
-	var near_hill_color := Color("#527f4d")
-	var bush_dark := Color("#315d35")
-	var bush_light := Color("#4e8a4c")
+	var outline := Color("#292b35")
+	var distant_base := Color("#729c6a")
+	var distant_light := Color("#91b285")
+	var distant_dark := Color("#567d56")
+	var near_base := Color("#527f4d")
+	var near_light := Color("#709c62")
+	var near_dark := Color("#365d3d")
 
-	# Distant rolling hills.
-	var distant_hills := Polygon2D.new()
-	distant_hills.polygon = PackedVector2Array([
+	# Distant rolling hills: same silhouette, richer shading.
+	var distant_points := PackedVector2Array([
 		Vector2(start_x, ground_y),
 		Vector2(start_x, ground_y - 15),
 		Vector2(start_x + section_width * 0.2, ground_y - 55),
@@ -1699,12 +1702,49 @@ func add_grassland_scenery(start_x: float, section_width: float) -> void:
 		Vector2(start_x + section_width, ground_y - 20),
 		Vector2(start_x + section_width, ground_y)
 	])
-	distant_hills.color = distant_hill_color
+
+	var distant_outline := Polygon2D.new()
+	distant_outline.polygon = distant_points
+	distant_outline.color = outline.darkened(0.05)
+	terrain_scenery.add_child(distant_outline)
+
+	var distant_hills := Polygon2D.new()
+	distant_hills.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y),
+		Vector2(start_x, ground_y - 12),
+		Vector2(start_x + section_width * 0.2, ground_y - 51),
+		Vector2(start_x + section_width * 0.45, ground_y - 27),
+		Vector2(start_x + section_width * 0.7, ground_y - 61),
+		Vector2(start_x + section_width, ground_y - 17),
+		Vector2(start_x + section_width, ground_y)
+	])
+	distant_hills.color = distant_base
 	terrain_scenery.add_child(distant_hills)
 
-	# Nearer, darker hills.
-	var near_hills := Polygon2D.new()
-	near_hills.polygon = PackedVector2Array([
+	var distant_highlight := Polygon2D.new()
+	distant_highlight.polygon = PackedVector2Array([
+		Vector2(start_x + section_width * 0.06, ground_y - 20),
+		Vector2(start_x + section_width * 0.2, ground_y - 51),
+		Vector2(start_x + section_width * 0.35, ground_y - 35),
+		Vector2(start_x + section_width * 0.24, ground_y - 37)
+	])
+	distant_highlight.color = distant_light
+	terrain_scenery.add_child(distant_highlight)
+
+	var distant_shadow := Polygon2D.new()
+	distant_shadow.polygon = PackedVector2Array([
+		Vector2(start_x + section_width * 0.7, ground_y - 61),
+		Vector2(start_x + section_width, ground_y - 17),
+		Vector2(start_x + section_width, ground_y),
+		Vector2(start_x + section_width * 0.78, ground_y),
+		Vector2(start_x + section_width * 0.79, ground_y - 34)
+	])
+	distant_shadow.color = distant_dark
+	terrain_scenery.add_child(distant_shadow)
+
+	# Near hills retain the original placement and height.
+	var near_outline := Polygon2D.new()
+	near_outline.polygon = PackedVector2Array([
 		Vector2(start_x, ground_y),
 		Vector2(start_x + section_width * 0.15, ground_y - 20),
 		Vector2(start_x + section_width * 0.4, ground_y - 35),
@@ -1712,27 +1752,105 @@ func add_grassland_scenery(start_x: float, section_width: float) -> void:
 		Vector2(start_x + section_width, ground_y - 30),
 		Vector2(start_x + section_width, ground_y)
 	])
-	near_hills.color = near_hill_color
+	near_outline.color = outline
+	terrain_scenery.add_child(near_outline)
+
+	var near_hills := Polygon2D.new()
+	near_hills.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y),
+		Vector2(start_x + section_width * 0.15, ground_y - 17),
+		Vector2(start_x + section_width * 0.4, ground_y - 31),
+		Vector2(start_x + section_width * 0.65, ground_y - 12),
+		Vector2(start_x + section_width, ground_y - 26),
+		Vector2(start_x + section_width, ground_y)
+	])
+	near_hills.color = near_base
 	terrain_scenery.add_child(near_hills)
 
-	# Small bushes along the ground.
-	for i in range(4):
-		var bush := ColorRect.new()
-		bush.color = bush_dark
-		bush.size = Vector2(24, 12)
-		bush.position = Vector2(
-			start_x + 25.0 + i * (section_width - 50.0) / 4.0,
-			ground_y - 12.0
-		)
-		bush.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		terrain_scenery.add_child(bush)
+	var near_highlight := Polygon2D.new()
+	near_highlight.polygon = PackedVector2Array([
+		Vector2(start_x + section_width * 0.15, ground_y - 17),
+		Vector2(start_x + section_width * 0.4, ground_y - 31),
+		Vector2(start_x + section_width * 0.51, ground_y - 23),
+		Vector2(start_x + section_width * 0.35, ground_y - 19)
+	])
+	near_highlight.color = near_light
+	terrain_scenery.add_child(near_highlight)
 
-		var highlight := ColorRect.new()
-		highlight.color = bush_light
-		highlight.size = Vector2(14, 5)
-		highlight.position = Vector2(5, 2)
-		highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		bush.add_child(highlight)
+	var near_shadow := Polygon2D.new()
+	near_shadow.polygon = PackedVector2Array([
+		Vector2(start_x + section_width * 0.65, ground_y - 12),
+		Vector2(start_x + section_width, ground_y - 26),
+		Vector2(start_x + section_width, ground_y),
+		Vector2(start_x + section_width * 0.7, ground_y)
+	])
+	near_shadow.color = near_dark
+	terrain_scenery.add_child(near_shadow)
+
+	# Four bushes, retaining their original positions and footprint.
+	for i in range(4):
+		var bush_x: float = (
+			start_x + 25.0
+			+ float(i) * (section_width - 50.0) / 4.0
+		)
+		var bush_y: float = ground_y - 12.0
+
+		# Irregular, dark-outlined silhouette.
+		var bush_outline := Polygon2D.new()
+		bush_outline.polygon = PackedVector2Array([
+			Vector2(bush_x, bush_y + 12),
+			Vector2(bush_x - 1, bush_y + 7),
+			Vector2(bush_x + 3, bush_y + 5),
+			Vector2(bush_x + 5, bush_y + 1),
+			Vector2(bush_x + 10, bush_y),
+			Vector2(bush_x + 14, bush_y + 3),
+			Vector2(bush_x + 19, bush_y + 1),
+			Vector2(bush_x + 23, bush_y + 5),
+			Vector2(bush_x + 25, bush_y + 9),
+			Vector2(bush_x + 24, bush_y + 12)
+		])
+		bush_outline.color = outline
+		terrain_scenery.add_child(bush_outline)
+
+		var bush_base := Polygon2D.new()
+		bush_base.polygon = PackedVector2Array([
+			Vector2(bush_x + 2, bush_y + 10),
+			Vector2(bush_x + 3, bush_y + 7),
+			Vector2(bush_x + 6, bush_y + 6),
+			Vector2(bush_x + 7, bush_y + 3),
+			Vector2(bush_x + 10, bush_y + 2),
+			Vector2(bush_x + 14, bush_y + 5),
+			Vector2(bush_x + 19, bush_y + 3),
+			Vector2(bush_x + 22, bush_y + 6),
+			Vector2(bush_x + 23, bush_y + 10)
+		])
+		bush_base.color = Color("#427943")
+		terrain_scenery.add_child(bush_base)
+
+		# Hard-edged shadow along the lower right.
+		var bush_shadow := Polygon2D.new()
+		bush_shadow.polygon = PackedVector2Array([
+			Vector2(bush_x + 14, bush_y + 5),
+			Vector2(bush_x + 19, bush_y + 3),
+			Vector2(bush_x + 22, bush_y + 6),
+			Vector2(bush_x + 23, bush_y + 10),
+			Vector2(bush_x + 12, bush_y + 10)
+		])
+		bush_shadow.color = Color("#285432")
+		terrain_scenery.add_child(bush_shadow)
+
+		# Small highlights on the upper foliage.
+		var bush_highlight := Polygon2D.new()
+		bush_highlight.polygon = PackedVector2Array([
+			Vector2(bush_x + 5, bush_y + 6),
+			Vector2(bush_x + 7, bush_y + 3),
+			Vector2(bush_x + 10, bush_y + 2),
+			Vector2(bush_x + 13, bush_y + 5),
+			Vector2(bush_x + 10, bush_y + 7)
+		])
+		bush_highlight.color = Color("#79aa65")
+		terrain_scenery.add_child(bush_highlight)
+
 
 func setup_sky_scenery() -> void:
 	sky_scenery = Control.new()
@@ -1740,6 +1858,7 @@ func setup_sky_scenery() -> void:
 	sky_scenery.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	background.add_child(sky_scenery)
 	background.move_child(sky_scenery, 0)
+
 
 
 
@@ -1755,6 +1874,32 @@ func update_sky_scenery() -> void:
 
 	match battlefield_grid.biome:
 		BattlefieldGrid.Biome.GRASSLAND:
+			# Broad, subtle sky shading behind the existing clouds.
+			var upper_sky := Polygon2D.new()
+			upper_sky.polygon = PackedVector2Array([
+				Vector2(0, 0),
+				Vector2(size.x, 0),
+				Vector2(size.x, size.y * 0.29),
+				Vector2(size.x * 0.7, size.y * 0.32),
+				Vector2(size.x * 0.35, size.y * 0.27),
+				Vector2(0, size.y * 0.31)
+			])
+			upper_sky.color = Color("#304960")
+			sky_scenery.add_child(upper_sky)
+
+			var horizon_sky := Polygon2D.new()
+			horizon_sky.polygon = PackedVector2Array([
+				Vector2(0, size.y * 0.48),
+				Vector2(size.x * 0.28, size.y * 0.46),
+				Vector2(size.x * 0.58, size.y * 0.49),
+				Vector2(size.x, size.y * 0.45),
+				Vector2(size.x, size.y * 0.78),
+				Vector2(0, size.y * 0.78)
+			])
+			horizon_sky.color = Color("#46647b")
+			sky_scenery.add_child(horizon_sky)
+
+			# Original cloud positions and count.
 			add_pixel_cloud(Vector2(half_width * 0.25, size.y * 0.16))
 			add_pixel_cloud(Vector2(half_width * 0.65, size.y * 0.28))
 			add_pixel_cloud(Vector2(half_width * 1.25, size.y * 0.19))
@@ -1768,35 +1913,104 @@ func update_sky_scenery() -> void:
 
 
 
+
 func add_pixel_cloud(position: Vector2) -> void:
-	var cloud_color := Color("#c7d7df")
-	var cloud_highlight := Color("#e6edf1")
+	var outline := Color("#526779")
+	var shadow := Color("#a5bdcc")
+	var base := Color("#d3e1e9")
+	var highlight := Color("#f0f6f8")
 
 	var cloud := Control.new()
 	cloud.position = position
 	cloud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sky_scenery.add_child(cloud)
 
-	var blocks: Array[Rect2] = [
-		Rect2(8, 8, 56, 16),
-		Rect2(16, 0, 32, 16),
-		Rect2(0, 16, 72, 12)
-	]
+	# Angular silhouette with a thin, darker outline.
+	var silhouette := Polygon2D.new()
+	silhouette.polygon = PackedVector2Array([
+		Vector2(0, 27),
+		Vector2(0, 19),
+		Vector2(7, 19),
+		Vector2(7, 13),
+		Vector2(15, 13),
+		Vector2(15, 6),
+		Vector2(23, 6),
+		Vector2(23, 2),
+		Vector2(43, 2),
+		Vector2(43, 6),
+		Vector2(51, 6),
+		Vector2(51, 13),
+		Vector2(61, 13),
+		Vector2(61, 19),
+		Vector2(72, 19),
+		Vector2(72, 27)
+	])
+	silhouette.color = outline
+	cloud.add_child(silhouette)
 
-	for block in blocks:
-		var rect := ColorRect.new()
-		rect.color = cloud_color
-		rect.position = block.position
-		rect.size = block.size
-		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cloud.add_child(rect)
+	# Main cloud body.
+	var body := Polygon2D.new()
+	body.polygon = PackedVector2Array([
+		Vector2(2, 25),
+		Vector2(2, 21),
+		Vector2(9, 21),
+		Vector2(9, 15),
+		Vector2(17, 15),
+		Vector2(17, 8),
+		Vector2(25, 8),
+		Vector2(25, 4),
+		Vector2(41, 4),
+		Vector2(41, 8),
+		Vector2(49, 8),
+		Vector2(49, 15),
+		Vector2(59, 15),
+		Vector2(59, 21),
+		Vector2(70, 21),
+		Vector2(70, 25)
+	])
+	body.color = base
+	cloud.add_child(body)
 
-	var highlight := ColorRect.new()
-	highlight.color = cloud_highlight
-	highlight.position = Vector2(20, 4)
-	highlight.size = Vector2(24, 8)
-	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cloud.add_child(highlight)
+	# Cel-shaded underside.
+	var underside := Polygon2D.new()
+	underside.polygon = PackedVector2Array([
+		Vector2(2, 20),
+		Vector2(14, 20),
+		Vector2(19, 17),
+		Vector2(30, 20),
+		Vector2(42, 17),
+		Vector2(53, 20),
+		Vector2(70, 20),
+		Vector2(70, 25),
+		Vector2(2, 25)
+	])
+	underside.color = shadow
+	cloud.add_child(underside)
+
+	# Bright upper surface.
+	var upper_light := Polygon2D.new()
+	upper_light.polygon = PackedVector2Array([
+		Vector2(19, 12),
+		Vector2(25, 7),
+		Vector2(40, 7),
+		Vector2(46, 12),
+		Vector2(40, 15),
+		Vector2(23, 15)
+	])
+	upper_light.color = highlight
+	cloud.add_child(upper_light)
+
+	# Small secondary highlight.
+	var side_light := Polygon2D.new()
+	side_light.polygon = PackedVector2Array([
+		Vector2(11, 18),
+		Vector2(17, 14),
+		Vector2(24, 15),
+		Vector2(20, 19)
+	])
+	side_light.color = highlight
+	cloud.add_child(side_light)
+
 
 func setup_ground_details() -> void:
 	ground_details = Control.new()
@@ -1926,49 +2140,139 @@ func add_scorched_ground_details(start_x: float, section_width: float) -> void:
 			fragment.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			ground_details.add_child(fragment)
 
+
 func add_grassland_ground_details(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
-
+	add_grassland_ground_shading(start_x, section_width)
 	var grass_dark := Color("#355c32")
-	var grass_light := Color("#91ad70")
+	var grass_base := Color("#56804a")
+	var grass_light := Color("#a3c17e")
 	var flower_yellow := Color("#eadb84")
-	var soil_color := Color("#526b46")
+	var flower_light := Color("#fff0b3")
+	var flower_center := Color("#a97838")
+	var soil_dark := Color("#465c3e")
+	var soil_base := Color("#526b46")
+	var soil_light := Color("#81906a")
 
-	# Scatter details in a predictable pattern.
+	# Preserve the existing deterministic positions and density.
 	for i in range(14):
-		var x: float = start_x + 15.0 + float(i) * (section_width - 30.0) / 14.0
+		var x: float = (
+			start_x + 15.0
+			+ float(i) * (section_width - 30.0) / 14.0
+		)
 		var y: float = ground_y + 18.0 + float((i * 17) % 65)
 
-		# Small grass tufts.
+		# Small three-blade grass tufts.
 		if i % 3 != 0:
-			var grass := Line2D.new()
-			grass.width = 2.0
-			grass.default_color = grass_dark if i % 2 == 0 else grass_light
-			grass.points = PackedVector2Array([
-				Vector2(x - 4, y - 5),
+			var primary_color: Color = (
+				grass_dark if i % 2 == 0 else grass_base
+			)
+
+			# Left blade.
+			var left_blade := Polygon2D.new()
+			left_blade.polygon = PackedVector2Array([
 				Vector2(x, y),
-				Vector2(x + 4, y - 7)
+				Vector2(x - 6, y - 7),
+				Vector2(x - 2, y - 5),
+				Vector2(x + 1, y)
 			])
-			ground_details.add_child(grass)
+			left_blade.color = primary_color
+			ground_details.add_child(left_blade)
 
-		# Occasional tiny flowers.
+			# Tall central blade.
+			var center_blade := Polygon2D.new()
+			center_blade.polygon = PackedVector2Array([
+				Vector2(x - 1, y),
+				Vector2(x, y - 10),
+				Vector2(x + 2, y - 5),
+				Vector2(x + 2, y)
+			])
+			center_blade.color = grass_light
+			ground_details.add_child(center_blade)
+
+			# Right blade.
+			var right_blade := Polygon2D.new()
+			right_blade.polygon = PackedVector2Array([
+				Vector2(x, y),
+				Vector2(x + 6, y - 8),
+				Vector2(x + 5, y - 3),
+				Vector2(x + 2, y)
+			])
+			right_blade.color = grass_dark
+			ground_details.add_child(right_blade)
+
+		# Keep the same occasional flowers.
 		if i % 5 == 0:
-			var flower := ColorRect.new()
-			flower.color = flower_yellow
-			flower.position = Vector2(x + 5, y - 5)
-			flower.size = Vector2(4, 4)
-			flower.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ground_details.add_child(flower)
+			var flower_x: float = x + 7.0
+			var flower_y: float = y - 4.0
 
-		# Sparse patches of exposed soil.
+			# Tiny dark silhouette.
+			var flower_outline := Polygon2D.new()
+			flower_outline.polygon = PackedVector2Array([
+				Vector2(flower_x, flower_y - 4),
+				Vector2(flower_x + 3, flower_y - 2),
+				Vector2(flower_x + 4, flower_y + 1),
+				Vector2(flower_x + 1, flower_y + 3),
+				Vector2(flower_x - 2, flower_y + 1),
+				Vector2(flower_x - 2, flower_y - 2)
+			])
+			flower_outline.color = flower_center
+			ground_details.add_child(flower_outline)
+
+			var flower_petals := Polygon2D.new()
+			flower_petals.polygon = PackedVector2Array([
+				Vector2(flower_x, flower_y - 3),
+				Vector2(flower_x + 2, flower_y - 1),
+				Vector2(flower_x + 3, flower_y + 1),
+				Vector2(flower_x, flower_y + 2),
+				Vector2(flower_x - 1, flower_y)
+			])
+			flower_petals.color = flower_yellow
+			ground_details.add_child(flower_petals)
+
+			var flower_highlight := Polygon2D.new()
+			flower_highlight.polygon = PackedVector2Array([
+				Vector2(flower_x, flower_y - 3),
+				Vector2(flower_x + 2, flower_y - 1),
+				Vector2(flower_x, flower_y)
+			])
+			flower_highlight.color = flower_light
+			ground_details.add_child(flower_highlight)
+
+		# Sparse, angular patches of exposed soil.
 		if i % 4 == 0:
-			var soil := ColorRect.new()
-			soil.color = soil_color
-			soil.position = Vector2(x - 9, y + 8)
-			soil.size = Vector2(10, 2)
-			soil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var soil := Polygon2D.new()
+			soil.polygon = PackedVector2Array([
+				Vector2(x - 9, y + 9),
+				Vector2(x - 6, y + 7),
+				Vector2(x + 1, y + 7),
+				Vector2(x + 3, y + 9),
+				Vector2(x, y + 11),
+				Vector2(x - 7, y + 11)
+			])
+			soil.color = soil_dark
 			ground_details.add_child(soil)
 
+			var soil_fill := Polygon2D.new()
+			soil_fill.polygon = PackedVector2Array([
+				Vector2(x - 7, y + 9),
+				Vector2(x - 5, y + 8),
+				Vector2(x, y + 8),
+				Vector2(x + 1, y + 9),
+				Vector2(x - 1, y + 10),
+				Vector2(x - 6, y + 10)
+			])
+			soil_fill.color = soil_base
+			ground_details.add_child(soil_fill)
+
+			var soil_highlight := Line2D.new()
+			soil_highlight.width = 1.0
+			soil_highlight.default_color = soil_light
+			soil_highlight.points = PackedVector2Array([
+				Vector2(x - 6, y + 8),
+				Vector2(x - 2, y + 8)
+			])
+			ground_details.add_child(soil_highlight)
 
 func add_desert_ground_details(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
@@ -2843,3 +3147,40 @@ func animate_archer_arrow(
 
 	# Remove the projectile when it reaches the defender.
 	arrow.queue_free()
+
+
+
+
+func add_grassland_ground_shading(
+	start_x: float,
+	section_width: float
+) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+	var bottom_y: float = size.y
+
+	# Slightly darker foreground creates depth without clutter.
+	var foreground := Polygon2D.new()
+	foreground.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y + 115),
+		Vector2(start_x + section_width * 0.25, ground_y + 108),
+		Vector2(start_x + section_width * 0.55, ground_y + 119),
+		Vector2(start_x + section_width, ground_y + 110),
+		Vector2(start_x + section_width, bottom_y),
+		Vector2(start_x, bottom_y)
+	])
+	foreground.color = Color("#5b7552")
+	ground_details.add_child(foreground)
+	ground_details.move_child(foreground, 0)
+
+	# One understated illuminated patch near the horizon.
+	var light_patch := Polygon2D.new()
+	light_patch.polygon = PackedVector2Array([
+		Vector2(start_x + section_width * 0.08, ground_y + 5),
+		Vector2(start_x + section_width * 0.45, ground_y + 3),
+		Vector2(start_x + section_width * 0.65, ground_y + 20),
+		Vector2(start_x + section_width * 0.34, ground_y + 26),
+		Vector2(start_x + section_width * 0.05, ground_y + 19)
+	])
+	light_patch.color = Color("#738a60")
+	ground_details.add_child(light_patch)
+	ground_details.move_child(light_patch, 0)
