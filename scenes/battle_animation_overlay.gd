@@ -1333,6 +1333,7 @@ func setup_terrain_scenery() -> void:
 
 
 
+
 func update_terrain_scenery() -> void:
 	for child in terrain_scenery.get_children():
 		child.queue_free()
@@ -1341,6 +1342,43 @@ func update_terrain_scenery() -> void:
 		return
 
 	var half_width: float = size.x / 2.0
+
+	var enemy_terrain: TerrainResource = battlefield_grid.get_terrain_at(
+		enemy_unit.grid_position
+	)
+	var player_terrain: TerrainResource = battlefield_grid.get_terrain_at(
+		player_unit.grid_position
+	)
+
+	var enemy_is_grassland: bool = (
+		battlefield_grid.biome == BattlefieldGrid.Biome.GRASSLAND
+		and (enemy_terrain == null
+			or enemy_terrain.terrain_type not in [
+				TerrainResource.TerrainType.FOREST,
+				TerrainResource.TerrainType.FORT,
+				TerrainResource.TerrainType.LAVA
+			])
+		and not battlefield_grid.is_adjacent_to_lava(
+			enemy_unit.grid_position
+		)
+	)
+
+	var player_is_grassland: bool = (
+		battlefield_grid.biome == BattlefieldGrid.Biome.GRASSLAND
+		and (player_terrain == null
+			or player_terrain.terrain_type not in [
+				TerrainResource.TerrainType.FOREST,
+				TerrainResource.TerrainType.FORT,
+				TerrainResource.TerrainType.LAVA
+			])
+		and not battlefield_grid.is_adjacent_to_lava(
+			player_unit.grid_position
+		)
+	)
+
+	if enemy_is_grassland and player_is_grassland:
+		add_grassland_scenery(0.0, size.x)
+		return
 
 	add_unit_terrain_scenery(enemy_unit, 0.0, half_width)
 	add_unit_terrain_scenery(player_unit, half_width, half_width)
@@ -2022,6 +2060,7 @@ func setup_ground_details() -> void:
 
 
 
+
 func update_ground_details() -> void:
 	for child in ground_details.get_children():
 		child.queue_free()
@@ -2030,6 +2069,43 @@ func update_ground_details() -> void:
 		return
 
 	var half_width: float = size.x / 2.0
+
+	var enemy_terrain: TerrainResource = battlefield_grid.get_terrain_at(
+		enemy_unit.grid_position
+	)
+	var player_terrain: TerrainResource = battlefield_grid.get_terrain_at(
+		player_unit.grid_position
+	)
+
+	var enemy_is_grassland: bool = (
+		battlefield_grid.biome == BattlefieldGrid.Biome.GRASSLAND
+		and (enemy_terrain == null
+			or enemy_terrain.terrain_type not in [
+				TerrainResource.TerrainType.FOREST,
+				TerrainResource.TerrainType.FORT,
+				TerrainResource.TerrainType.LAVA
+			])
+		and not battlefield_grid.is_adjacent_to_lava(
+			enemy_unit.grid_position
+		)
+	)
+
+	var player_is_grassland: bool = (
+		battlefield_grid.biome == BattlefieldGrid.Biome.GRASSLAND
+		and (player_terrain == null
+			or player_terrain.terrain_type not in [
+				TerrainResource.TerrainType.FOREST,
+				TerrainResource.TerrainType.FORT,
+				TerrainResource.TerrainType.LAVA
+			])
+		and not battlefield_grid.is_adjacent_to_lava(
+			player_unit.grid_position
+		)
+	)
+
+	if enemy_is_grassland and player_is_grassland:
+		add_grassland_ground_details(0.0, size.x)
+		return
 
 	add_unit_ground_details(enemy_unit, 0.0, half_width)
 	add_unit_ground_details(player_unit, half_width, half_width)
