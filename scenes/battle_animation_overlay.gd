@@ -1974,60 +1974,328 @@ func add_fort_scenery(start_x: float, section_width: float) -> void:
 				terrain_scenery.add_child(snow_between)
 
 
+
+
 func add_lava_scenery(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
+	var end_x: float = start_x + section_width
 
-	# Dark volcanic mountains in the background.
-	var mountain_color := Color("#42383e")
+	var outline := Color("#292b35")
+	var rock_base := Color("#51454a")
+	var rock_light := Color("#766268")
+	var rock_dark := Color("#302c34")
+	var lava_dark := Color("#9d3025")
+	var lava_base := Color("#f15a24")
+	var lava_light := Color("#ffad42")
+	var lava_hot := Color("#ffe08a")
 
+	# Four volcanic mountains.
 	for i in range(4):
-		var mountain := Polygon2D.new()
-
-		var mountain_x: float = start_x + section_width * (float(i) + 0.5) / 4.0
+		var mountain_x: float = (
+			start_x + section_width * (float(i) + 0.5) / 4.0
+		)
 		var mountain_width: float = section_width / 3.0
 		var mountain_height: float = 90.0 + float(i % 2) * 35.0
+		var half_width: float = mountain_width / 2.0
+		var peak_y: float = ground_y - mountain_height
 
-		mountain.polygon = PackedVector2Array([
-			Vector2(mountain_x - mountain_width / 2.0, ground_y),
-			Vector2(mountain_x, ground_y - mountain_height),
-			Vector2(mountain_x + mountain_width / 2.0, ground_y)
+		var silhouette := Polygon2D.new()
+		silhouette.polygon = PackedVector2Array([
+			Vector2(mountain_x - half_width, ground_y),
+			Vector2(mountain_x - half_width * 0.67, ground_y - mountain_height * 0.37),
+			Vector2(mountain_x - half_width * 0.32, ground_y - mountain_height * 0.62),
+			Vector2(mountain_x - 8, peak_y + 9),
+			Vector2(mountain_x + 3, peak_y),
+			Vector2(mountain_x + 17, peak_y + 12),
+			Vector2(mountain_x + half_width * 0.58, ground_y - mountain_height * 0.43),
+			Vector2(mountain_x + half_width, ground_y)
 		])
+		silhouette.color = outline
+		terrain_scenery.add_child(silhouette)
 
-		mountain.color = mountain_color
+		var mountain := Polygon2D.new()
+		mountain.polygon = PackedVector2Array([
+			Vector2(mountain_x - half_width + 4, ground_y),
+			Vector2(mountain_x - half_width * 0.63, ground_y - mountain_height * 0.36),
+			Vector2(mountain_x - half_width * 0.29, ground_y - mountain_height * 0.60),
+			Vector2(mountain_x - 5, peak_y + 12),
+			Vector2(mountain_x + 3, peak_y + 5),
+			Vector2(mountain_x + 14, peak_y + 15),
+			Vector2(mountain_x + half_width * 0.55, ground_y - mountain_height * 0.41),
+			Vector2(mountain_x + half_width - 4, ground_y)
+		])
+		mountain.color = rock_base
 		terrain_scenery.add_child(mountain)
 
-	# Glowing lava pools along the ground.
-	var pool_positions: Array[float] = [0.12, 0.42, 0.75]
+		var lit_face := Polygon2D.new()
+		lit_face.polygon = PackedVector2Array([
+			Vector2(mountain_x - half_width + 4, ground_y),
+			Vector2(mountain_x - half_width * 0.63, ground_y - mountain_height * 0.36),
+			Vector2(mountain_x - half_width * 0.29, ground_y - mountain_height * 0.60),
+			Vector2(mountain_x - 5, peak_y + 12),
+			Vector2(mountain_x - 15, ground_y - mountain_height * 0.34),
+			Vector2(mountain_x - half_width * 0.18, ground_y)
+		])
+		lit_face.color = rock_light
+		terrain_scenery.add_child(lit_face)
 
-	for fraction in pool_positions:
-		var pool := ColorRect.new()
-		pool.color = Color("#ff6b22")
-		pool.position = Vector2(
-			start_x + section_width * fraction,
-			ground_y + 18.0
+		var shaded_face := Polygon2D.new()
+		shaded_face.polygon = PackedVector2Array([
+			Vector2(mountain_x + 3, peak_y + 5),
+			Vector2(mountain_x + 14, peak_y + 15),
+			Vector2(mountain_x + half_width * 0.55, ground_y - mountain_height * 0.41),
+			Vector2(mountain_x + half_width - 4, ground_y),
+			Vector2(mountain_x + 5, ground_y - 5),
+			Vector2(mountain_x - 4, ground_y - mountain_height * 0.42)
+		])
+		shaded_face.color = rock_dark
+		terrain_scenery.add_child(shaded_face)
+
+		var fracture := Line2D.new()
+		fracture.width = 2.0
+		fracture.default_color = outline
+		fracture.points = PackedVector2Array([
+			Vector2(mountain_x - 5, peak_y + 23),
+			Vector2(mountain_x + 3, peak_y + 37),
+			Vector2(mountain_x - 2, peak_y + 49)
+		])
+		terrain_scenery.add_child(fracture)
+
+		var mineral := Polygon2D.new()
+		mineral.polygon = PackedVector2Array([
+			Vector2(mountain_x + 7, ground_y - 19),
+			Vector2(mountain_x + 12, ground_y - 31),
+			Vector2(mountain_x + 14, ground_y - 23),
+			Vector2(mountain_x + 10, ground_y - 12)
+		])
+		mineral.color = lava_dark
+		terrain_scenery.add_child(mineral)
+
+	# Three distinct lava pools.
+	# Each has its own outline, size, angle, and molten pattern.
+	# Coordinates are local to the pool's origin.
+	var pool_data: Array[Dictionary] = [
+		{
+			"fraction": 0.12,
+			"offset_y": 20.0,
+			"scale": 0.82,
+			"outline": PackedVector2Array([
+				Vector2(0, 8), Vector2(7, 3),
+				Vector2(15, 4), Vector2(21, 0),
+				Vector2(35, 2), Vector2(43, 6),
+				Vector2(53, 5), Vector2(62, 10),
+				Vector2(57, 15), Vector2(43, 17),
+				Vector2(28, 14), Vector2(17, 17),
+				Vector2(5, 14)
+			]),
+			"molten": PackedVector2Array([
+				Vector2(5, 9), Vector2(13, 6),
+				Vector2(21, 7), Vector2(25, 4),
+				Vector2(34, 5), Vector2(42, 9),
+				Vector2(52, 8), Vector2(57, 11),
+				Vector2(49, 13), Vector2(36, 12),
+				Vector2(27, 11), Vector2(17, 14),
+				Vector2(8, 12)
+			]),
+			"flow": PackedVector2Array([
+				Vector2(10, 9), Vector2(18, 8),
+				Vector2(25, 9), Vector2(32, 7),
+				Vector2(40, 10), Vector2(35, 11),
+				Vector2(25, 10), Vector2(17, 12)
+			]),
+			"hotspot": PackedVector2Array([
+				Vector2(24, 8), Vector2(30, 7),
+				Vector2(33, 9), Vector2(27, 10)
+			])
+		},
+		{
+			"fraction": 0.42,
+			"offset_y": 25.0,
+			"scale": 1.0,
+			"outline": PackedVector2Array([
+				Vector2(0, 12), Vector2(9, 6),
+				Vector2(19, 7), Vector2(28, 2),
+				Vector2(40, 4), Vector2(48, 0),
+				Vector2(59, 4), Vector2(66, 10),
+				Vector2(82, 12), Vector2(90, 18),
+				Vector2(82, 23), Vector2(70, 21),
+				Vector2(60, 18), Vector2(49, 20),
+				Vector2(40, 16), Vector2(27, 19),
+				Vector2(18, 16), Vector2(7, 18)
+			]),
+			"molten": PackedVector2Array([
+				Vector2(6, 12), Vector2(13, 9),
+				Vector2(21, 10), Vector2(29, 5),
+				Vector2(39, 7), Vector2(48, 4),
+				Vector2(57, 8), Vector2(64, 13),
+				Vector2(80, 15), Vector2(84, 18),
+				Vector2(72, 18), Vector2(61, 15),
+				Vector2(49, 17), Vector2(39, 13),
+				Vector2(27, 16), Vector2(17, 13),
+				Vector2(9, 15)
+			]),
+			"flow": PackedVector2Array([
+				Vector2(13, 12), Vector2(25, 11),
+				Vector2(34, 8), Vector2(43, 10),
+				Vector2(51, 8), Vector2(60, 12),
+				Vector2(74, 16), Vector2(63, 15),
+				Vector2(52, 11), Vector2(42, 13),
+				Vector2(32, 11), Vector2(23, 14)
+			]),
+			"hotspot": PackedVector2Array([
+				Vector2(44, 9), Vector2(51, 7),
+				Vector2(55, 10), Vector2(48, 11)
+			])
+		},
+		{
+			"fraction": 0.75,
+			"offset_y": 18.0,
+			"scale": 0.92,
+			"outline": PackedVector2Array([
+				Vector2(0, 7), Vector2(12, 3),
+				Vector2(21, 5), Vector2(32, 2),
+				Vector2(41, 6), Vector2(50, 4),
+				Vector2(63, 8), Vector2(70, 13),
+				Vector2(62, 18), Vector2(50, 16),
+				Vector2(41, 19), Vector2(30, 15),
+				Vector2(20, 17), Vector2(10, 13),
+				Vector2(2, 13)
+			]),
+			"molten": PackedVector2Array([
+				Vector2(6, 8), Vector2(13, 6),
+				Vector2(22, 8), Vector2(32, 5),
+				Vector2(41, 9), Vector2(50, 7),
+				Vector2(61, 10), Vector2(65, 13),
+				Vector2(57, 15), Vector2(49, 13),
+				Vector2(40, 16), Vector2(30, 12),
+				Vector2(20, 14), Vector2(11, 11)
+			]),
+			"flow": PackedVector2Array([
+				Vector2(10, 9), Vector2(19, 10),
+				Vector2(30, 7), Vector2(40, 11),
+				Vector2(50, 9), Vector2(59, 12),
+				Vector2(49, 11), Vector2(40, 14),
+				Vector2(29, 10), Vector2(20, 12)
+			]),
+			"hotspot": PackedVector2Array([
+				Vector2(29, 8), Vector2(35, 7),
+				Vector2(39, 10), Vector2(33, 11)
+			])
+		}
+	]
+
+	for data in pool_data:
+		var pool_origin := Vector2(
+			start_x + section_width * float(data["fraction"]),
+			ground_y + float(data["offset_y"])
 		)
-		pool.size = Vector2(75, 14)
-		pool.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var pool_scale: float = float(data["scale"])
+
+		# Scale around the origin and keep the entire pool
+		# within the terrain section.
+		var pool := Node2D.new()
+		pool.position = pool_origin
+		pool.scale = Vector2(pool_scale, pool_scale)
 		terrain_scenery.add_child(pool)
 
-		var glow := ColorRect.new()
-		glow.color = Color("#ffb347")
-		glow.position = Vector2(8, 3)
-		glow.size = Vector2(48, 5)
-		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		pool.add_child(glow)
+		# Dark, irregular outer crust.
+		var crust := Polygon2D.new()
+		crust.polygon = data["outline"]
+		crust.color = outline
+		pool.add_child(crust)
 
-	# Small volcanic rocks near the ground.
+		# Dark red lava edge visible inside the crust.
+		var deep_lava := Polygon2D.new()
+		deep_lava.polygon = data["outline"]
+		deep_lava.color = lava_dark
+		deep_lava.scale = Vector2(0.91, 0.72)
+		deep_lava.position = Vector2(3.0, 3.0)
+		pool.add_child(deep_lava)
+
+		# Main orange molten region.
+		var molten := Polygon2D.new()
+		molten.polygon = data["molten"]
+		molten.color = lava_base
+		pool.add_child(molten)
+
+		# Bright, irregular flow.
+		var hot_flow := Polygon2D.new()
+		hot_flow.polygon = data["flow"]
+		hot_flow.color = lava_light
+		pool.add_child(hot_flow)
+
+		# Small yellow-white hotspot.
+		var hotspot := Polygon2D.new()
+		hotspot.polygon = data["hotspot"]
+		hotspot.color = lava_hot
+		pool.add_child(hotspot)
+
+		# A few dark fragments of cooling crust.
+		var crust_fragment := Polygon2D.new()
+		crust_fragment.polygon = PackedVector2Array([
+			Vector2(12, 4),
+			Vector2(18, 2),
+			Vector2(23, 5),
+			Vector2(19, 7)
+		])
+		crust_fragment.color = rock_dark
+		pool.add_child(crust_fragment)
+
+	# Five angular volcanic rocks, preserving the original spacing.
 	for i in range(5):
-		var rock := ColorRect.new()
-		rock.color = Color("#302c32")
-		rock.size = Vector2(20 + (i % 3) * 8, 12 + (i % 2) * 6)
-		rock.position = Vector2(
-			start_x + 25.0 + i * (section_width - 50.0) / 5.0,
-			ground_y - rock.size.y
+		var rock_width: float = 20.0 + float(i % 3) * 8.0
+		var rock_height: float = 12.0 + float(i % 2) * 6.0
+		var rock_x: float = (
+			start_x + 25.0
+			+ float(i) * (section_width - 50.0) / 5.0
 		)
-		rock.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		terrain_scenery.add_child(rock)
+		var rock_y: float = ground_y
+
+		var rock_outline := Polygon2D.new()
+		rock_outline.polygon = PackedVector2Array([
+			Vector2(rock_x - 2, rock_y),
+			Vector2(rock_x + 2, rock_y - rock_height * 0.55),
+			Vector2(rock_x + rock_width * 0.42, rock_y - rock_height - 2),
+			Vector2(rock_x + rock_width * 0.77, rock_y - rock_height * 0.75),
+			Vector2(rock_x + rock_width + 2, rock_y - 3),
+			Vector2(rock_x + rock_width + 2, rock_y)
+		])
+		rock_outline.color = outline
+		terrain_scenery.add_child(rock_outline)
+
+		var rock_fill := Polygon2D.new()
+		rock_fill.polygon = PackedVector2Array([
+			Vector2(rock_x + 1, rock_y - 2),
+			Vector2(rock_x + 4, rock_y - rock_height * 0.54),
+			Vector2(rock_x + rock_width * 0.42, rock_y - rock_height + 1),
+			Vector2(rock_x + rock_width * 0.75, rock_y - rock_height * 0.7),
+			Vector2(rock_x + rock_width - 1, rock_y - 3),
+			Vector2(rock_x + rock_width - 1, rock_y - 1)
+		])
+		rock_fill.color = rock_base
+		terrain_scenery.add_child(rock_fill)
+
+		var rock_highlight := Polygon2D.new()
+		rock_highlight.polygon = PackedVector2Array([
+			Vector2(rock_x + 4, rock_y - rock_height * 0.54),
+			Vector2(rock_x + rock_width * 0.42, rock_y - rock_height + 1),
+			Vector2(rock_x + rock_width * 0.5, rock_y - rock_height * 0.55),
+			Vector2(rock_x + rock_width * 0.3, rock_y - 2),
+			Vector2(rock_x + 2, rock_y - 2)
+		])
+		rock_highlight.color = rock_light
+		terrain_scenery.add_child(rock_highlight)
+
+		var rock_shadow := Polygon2D.new()
+		rock_shadow.polygon = PackedVector2Array([
+			Vector2(rock_x + rock_width * 0.5, rock_y - rock_height * 0.55),
+			Vector2(rock_x + rock_width * 0.75, rock_y - rock_height * 0.7),
+			Vector2(rock_x + rock_width - 1, rock_y - 3),
+			Vector2(rock_x + rock_width - 1, rock_y - 1),
+			Vector2(rock_x + rock_width * 0.55, rock_y - 1)
+		])
+		rock_shadow.color = rock_dark
+		terrain_scenery.add_child(rock_shadow)
 
 
 func add_desert_scenery(start_x: float, section_width: float) -> void:
@@ -2550,68 +2818,139 @@ func add_unit_ground_details(
 			add_snow_ground_details(start_x, section_width)
 
 
+
 func add_scorched_ground_details(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
+	var end_x: float = start_x + section_width
+	var bottom_y: float = size.y
 
-	var crack_color := Color("#292725")
-	var ash_color := Color("#75665b")
+	var rock_light := Color("#60544d")
+	var rock_dark := Color("#483e3b")
+	var crack_dark := Color("#292725")
+	var crack_edge := Color("#78675b")
+	var ash_color := Color("#89796b")
+	var ember_color := Color("#b96938")
+	var ember_light := Color("#e39a4b")
 
-	# Short, irregular cracks across the scorched ground.
+	# Broad, subtle patches of exposed rock.
+	var upper_facet := Polygon2D.new()
+	upper_facet.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y + 12),
+		Vector2(start_x + section_width * 0.26, ground_y + 7),
+		Vector2(start_x + section_width * 0.61, ground_y + 19),
+		Vector2(end_x, ground_y + 10),
+		Vector2(end_x, ground_y + 39),
+		Vector2(start_x + section_width * 0.48, ground_y + 34),
+		Vector2(start_x, ground_y + 43)
+	])
+	upper_facet.color = rock_light
+	ground_details.add_child(upper_facet)
+
+	var lower_facet := Polygon2D.new()
+	lower_facet.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y + 119),
+		Vector2(start_x + section_width * 0.28, ground_y + 111),
+		Vector2(start_x + section_width * 0.67, ground_y + 124),
+		Vector2(end_x, ground_y + 115),
+		Vector2(end_x, bottom_y),
+		Vector2(start_x, bottom_y)
+	])
+	lower_facet.color = rock_dark
+	ground_details.add_child(lower_facet)
+
+	# Nine varied cracks, preserving the original distribution.
 	for i in range(9):
-		var x: float = start_x + 20.0 + float(i) * (section_width - 40.0) / 9.0
+		var x: float = (
+			start_x + 20.0
+			+ float(i) * (section_width - 40.0) / 9.0
+		)
 		var y: float = ground_y + 20.0 + float((i * 37) % 85)
 
-		var crack := ColorRect.new()
-		crack.color = crack_color
-		crack.position = Vector2(x, y)
-		crack.size = Vector2(18, 3)
-		crack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var length: float = 13.0 + float((i * 7) % 12)
+		var bend: float = float((i * 5) % 9) - 4.0
+		var direction: float = -1.0 if i % 2 == 0 else 1.0
+
+		var points := PackedVector2Array([
+			Vector2(x - length * 0.5, y),
+			Vector2(x - length * 0.15, y + direction * 3.0),
+			Vector2(x + bend, y + direction),
+			Vector2(x + length * 0.5, y + direction * 5.0)
+		])
+
+		# Narrow illuminated stone edge beside the fracture.
+		var edge := Line2D.new()
+		edge.width = 2.0
+		edge.default_color = crack_edge
+		for point in points:
+			edge.add_point(point + Vector2(0, 2))
+		ground_details.add_child(edge)
+
+		var crack := Line2D.new()
+		crack.width = 2.5
+		crack.default_color = crack_dark
+		crack.points = points
 		ground_details.add_child(crack)
 
-		var branch := ColorRect.new()
-		branch.color = crack_color
-		branch.position = Vector2(x + 12, y + 3)
-		branch.size = Vector2(3, 9)
-		branch.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ground_details.add_child(branch)
+		# Occasional short branches, not identical on every crack.
+		if i % 3 == 1:
+			var branch := Line2D.new()
+			branch.width = 2.0
+			branch.default_color = crack_dark
+			branch.points = PackedVector2Array([
+				points[2],
+				points[2] + Vector2(3, 5),
+				points[2] + Vector2(1, 9)
+			])
+			ground_details.add_child(branch)
 
-	# Scattered patches of pale volcanic ash.
+	# Fourteen sparse ash deposits with irregular silhouettes.
 	for i in range(14):
-		var ash := ColorRect.new()
-		ash.color = ash_color
-		ash.size = Vector2(5 + (i % 3) * 3, 2)
-		ash.position = Vector2(
-			start_x + 12.0 + float((i * 53) % int(maxf(section_width - 24.0, 1.0))),
-			ground_y + 12.0 + float((i * 29) % 100)
+		var x: float = (
+			start_x + 12.0
+			+ float((i * 53) % int(maxf(section_width - 24.0, 1.0)))
 		)
-		ash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ground_details.add_child(ash)
-		
-		# Occasional glowing embers among the scorched earth.
-	var ember_color := Color("#a65a32")
+		var y: float = ground_y + 12.0 + float((i * 29) % 100)
+		var width: float = 5.0 + float(i % 3) * 3.0
 
+		var ash := Polygon2D.new()
+		ash.polygon = PackedVector2Array([
+			Vector2(x, y + 2),
+			Vector2(x + 2, y),
+			Vector2(x + width - 2, y),
+			Vector2(x + width, y + 2),
+			Vector2(x + width * 0.55, y + 3)
+		])
+		ash.color = ash_color
+		ground_details.add_child(ash)
+
+	# Five isolated embers, with small hot centres.
 	for i in range(5):
-		var ember_x: float = (
+		var x: float = (
 			start_x + 35.0
 			+ float(i) * (section_width - 70.0) / 5.0
 		)
-		var ember_y: float = ground_y + 28.0 + float((i * 41) % 90)
+		var y: float = ground_y + 28.0 + float((i * 41) % 90)
 
-		var ember := ColorRect.new()
+		var ember := Polygon2D.new()
+		ember.polygon = PackedVector2Array([
+			Vector2(x - 2, y + 1),
+			Vector2(x + 2, y - 1),
+			Vector2(x + 6, y),
+			Vector2(x + 4, y + 3),
+			Vector2(x, y + 3)
+		])
 		ember.color = ember_color
-		ember.position = Vector2(ember_x, ember_y)
-		ember.size = Vector2(5, 2)
-		ember.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ground_details.add_child(ember)
 
-		# A smaller glowing fragment beside some embers.
 		if i % 2 == 0:
-			var fragment := ColorRect.new()
-			fragment.color = Color("#c47a42")
-			fragment.position = Vector2(ember_x + 7, ember_y + 3)
-			fragment.size = Vector2(2, 2)
-			fragment.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ground_details.add_child(fragment)
+			var hot_center := Polygon2D.new()
+			hot_center.polygon = PackedVector2Array([
+				Vector2(x + 1, y),
+				Vector2(x + 4, y + 1),
+				Vector2(x + 2, y + 2)
+			])
+			hot_center.color = ember_light
+			ground_details.add_child(hot_center)
 
 
 func add_grassland_ground_details(
@@ -3189,52 +3528,137 @@ func style_battle_status_panels() -> void:
 		hp_bar.add_theme_stylebox_override("background", background_style)
 
 
+
 func add_lava_ground_details(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
+	var end_x: float = start_x + section_width
+	var bottom_y: float = size.y
 
-	var crack_dark := Color("#392a2b")
-	var lava_orange := Color("#ff762b")
-	var lava_yellow := Color("#ffb347")
-	var ash_color := Color("#68413a")
+	var rock_light := Color("#65504c")
+	var rock_dark := Color("#493b3c")
+	var crack_dark := Color("#30282d")
+	var crack_edge := Color("#775650")
+	var lava_red := Color("#a93d29")
+	var lava_orange := Color("#f36a2a")
+	var lava_yellow := Color("#ffba54")
+	var ash_color := Color("#76534c")
 
+	# Wide, low-contrast facets suggest uneven volcanic stone.
+	var upper_facet := Polygon2D.new()
+	upper_facet.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y + 11),
+		Vector2(start_x + section_width * 0.23, ground_y + 5),
+		Vector2(start_x + section_width * 0.52, ground_y + 16),
+		Vector2(start_x + section_width * 0.79, ground_y + 8),
+		Vector2(end_x, ground_y + 14),
+		Vector2(end_x, ground_y + 40),
+		Vector2(start_x + section_width * 0.55, ground_y + 34),
+		Vector2(start_x, ground_y + 42)
+	])
+	upper_facet.color = rock_light
+	ground_details.add_child(upper_facet)
+
+	var lower_facet := Polygon2D.new()
+	lower_facet.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y + 115),
+		Vector2(start_x + section_width * 0.24, ground_y + 109),
+		Vector2(start_x + section_width * 0.62, ground_y + 123),
+		Vector2(end_x, ground_y + 112),
+		Vector2(end_x, bottom_y),
+		Vector2(start_x, bottom_y)
+	])
+	lower_facet.color = rock_dark
+	ground_details.add_child(lower_facet)
+
+	# Twelve cracks, varied in direction, length, and branching.
 	for i in range(12):
-		var x: float = start_x + 18.0 + float(i) * (section_width - 36.0) / 12.0
+		var x: float = (
+			start_x + 18.0
+			+ float(i) * (section_width - 36.0) / 12.0
+		)
 		var y: float = ground_y + 20.0 + float((i * 19) % 65)
 
-		# Jagged cracks across the volcanic ground.
+		var length: float = 17.0 + float((i * 11) % 15)
+		var direction: float = -1.0 if i % 2 == 0 else 1.0
+		var bend: float = float((i * 7) % 11) - 5.0
+
+		var points := PackedVector2Array([
+			Vector2(x - length * 0.5, y + 1),
+			Vector2(x - length * 0.2, y + direction * 4),
+			Vector2(x + bend, y - direction * 2),
+			Vector2(x + length * 0.22, y + direction * 3),
+			Vector2(x + length * 0.5, y + direction)
+		])
+
+		# Light-catching fracture edge.
+		var edge := Line2D.new()
+		edge.width = 2.0
+		edge.default_color = crack_edge
+		for point in points:
+			edge.add_point(point + Vector2(0, 2))
+		ground_details.add_child(edge)
+
+		# Dark fractured rock.
 		var crack := Line2D.new()
 		crack.width = 3.0
 		crack.default_color = crack_dark
-		crack.points = PackedVector2Array([
-			Vector2(x - 10.0, y),
-			Vector2(x - 3.0, y + 4.0),
-			Vector2(x + 5.0, y - 2.0),
-			Vector2(x + 13.0, y + 3.0)
-		])
+		crack.points = points
 		ground_details.add_child(crack)
 
-		# Some cracks have molten lava showing through.
+		# Four cracks reveal molten rock beneath the crust.
 		if i % 3 == 0:
-			var fissure := Line2D.new()
-			fissure.width = 2.0
-			fissure.default_color = lava_orange
-			fissure.points = crack.points
-			ground_details.add_child(fissure)
+			var molten_shadow := Line2D.new()
+			molten_shadow.width = 3.0
+			molten_shadow.default_color = lava_red
+			molten_shadow.points = PackedVector2Array([
+				points[1], points[2], points[3]
+			])
+			ground_details.add_child(molten_shadow)
 
-			var hotspot := ColorRect.new()
-			hotspot.color = lava_yellow
-			hotspot.position = Vector2(x + 3.0, y - 3.0)
-			hotspot.size = Vector2(5.0, 3.0)
-			hotspot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ground_details.add_child(hotspot)
+			var molten_flow := Line2D.new()
+			molten_flow.width = 1.5
+			molten_flow.default_color = lava_orange
+			molten_flow.points = PackedVector2Array([
+				points[1], points[2], points[3]
+			])
+			ground_details.add_child(molten_flow)
 
-		# Small scattered patches of volcanic ash.
+			# Only some fissures get a brighter hotspot.
+			if i % 2 == 0:
+				var hotspot := Polygon2D.new()
+				hotspot.polygon = PackedVector2Array([
+					points[2] + Vector2(-2, 0),
+					points[2] + Vector2(2, -1),
+					points[2] + Vector2(4, 1),
+					points[2] + Vector2(0, 2)
+				])
+				hotspot.color = lava_yellow
+				ground_details.add_child(hotspot)
+
+		# Occasional fractured side branches.
+		elif i % 4 == 1:
+			var branch := Line2D.new()
+			branch.width = 2.0
+			branch.default_color = crack_dark
+			branch.points = PackedVector2Array([
+				points[2],
+				points[2] + Vector2(-3, 6),
+				points[2] + Vector2(1, 10)
+			])
+			ground_details.add_child(branch)
+
+		# Three sparse deposits of volcanic ash.
 		if i % 4 == 0:
-			var ash := ColorRect.new()
+			var ash := Polygon2D.new()
+			ash.polygon = PackedVector2Array([
+				Vector2(x - 8, y + 12),
+				Vector2(x - 4, y + 9),
+				Vector2(x + 3, y + 10),
+				Vector2(x + 7, y + 13),
+				Vector2(x, y + 14),
+				Vector2(x - 6, y + 14)
+			])
 			ash.color = ash_color
-			ash.position = Vector2(x - 8.0, y + 10.0)
-			ash.size = Vector2(12.0, 3.0)
-			ash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			ground_details.add_child(ash)
 
 
