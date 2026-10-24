@@ -2211,11 +2211,17 @@ func add_fort_scenery(start_x: float, section_width: float) -> void:
 	foundation.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	terrain_scenery.add_child(foundation)
 
+
+
 func add_lava_scenery(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
 	var is_desert: bool = (
 		battlefield_grid != null
 		and battlefield_grid.biome == BattlefieldGrid.Biome.DESERT
+	)
+	var is_snow: bool = (
+		battlefield_grid != null
+		and battlefield_grid.biome == BattlefieldGrid.Biome.SNOW
 	)
 
 	var outline: Color = Color("#302c34")
@@ -2308,49 +2314,36 @@ func add_lava_scenery(start_x: float, section_width: float) -> void:
 			])
 			terrain_scenery.add_child(fracture)
 
-	# Sparse angular rocks at the base of the mountains.
-	var rocks: Array[Dictionary] = [
-		{"x": 0.08, "w": 16.0, "h": 11.0},
-		{"x": 0.36, "w": 25.0, "h": 17.0},
-		{"x": 0.69, "w": 19.0, "h": 13.0},
-		{"x": 0.94, "w": 13.0, "h": 9.0}
-	]
+		# Small snow caps on volcanic peaks in the snow biome.
+		if is_snow:
+			var cap_depth: float = 12.0 + float((i * 7) % 9)
+			var cap_width: float = 12.0 + float((i * 5) % 8)
 
-	for data in rocks:
-		var rx: float = start_x + section_width * float(data["x"])
-		var rw: float = float(data["w"])
-		var rh: float = float(data["h"])
+			var snow_shadow := Polygon2D.new()
+			snow_shadow.polygon = PackedVector2Array([
+				Vector2(peak_x - cap_width - 2.0, peak_y + cap_depth + 3.0),
+				Vector2(peak_x - 7.0, peak_y + 7.0),
+				Vector2(peak_x, peak_y - 1.0),
+				Vector2(peak_x + 9.0, peak_y + 9.0),
+				Vector2(peak_x + cap_width + 2.0, peak_y + cap_depth + 5.0),
+				Vector2(peak_x + 6.0, peak_y + cap_depth - 2.0),
+				Vector2(peak_x - 2.0, peak_y + cap_depth + 2.0),
+				Vector2(peak_x - cap_width * 0.55, peak_y + cap_depth - 3.0)
+			])
+			snow_shadow.color = Color("#9fb8c7")
+			terrain_scenery.add_child(snow_shadow)
 
-		var rock := Polygon2D.new()
-		rock.polygon = PackedVector2Array([
-			Vector2(rx - rw * 0.5, ground_y),
-			Vector2(rx - rw * 0.28, ground_y - rh * 0.65),
-			Vector2(rx + rw * 0.08, ground_y - rh),
-			Vector2(rx + rw * 0.35, ground_y - rh * 0.52),
-			Vector2(rx + rw * 0.5, ground_y)
-		])
-		rock.color = outline
-		terrain_scenery.add_child(rock)
-
-		var highlight := Polygon2D.new()
-		highlight.polygon = PackedVector2Array([
-			Vector2(rx - rw * 0.37, ground_y - 2),
-			Vector2(rx - rw * 0.25, ground_y - rh * 0.61),
-			Vector2(rx + rw * 0.08, ground_y - rh + 3),
-			Vector2(rx, ground_y - 2)
-		])
-		highlight.color = rock_light
-		terrain_scenery.add_child(highlight)
-
-		var dark_face := Polygon2D.new()
-		dark_face.polygon = PackedVector2Array([
-			Vector2(rx + rw * 0.08, ground_y - rh + 3),
-			Vector2(rx + rw * 0.35, ground_y - rh * 0.52),
-			Vector2(rx + rw * 0.42, ground_y - 2),
-			Vector2(rx, ground_y - 2)
-		])
-		dark_face.color = rock_dark
-		terrain_scenery.add_child(dark_face)
+			var snow_light := Polygon2D.new()
+			snow_light.polygon = PackedVector2Array([
+				Vector2(peak_x - cap_width, peak_y + cap_depth),
+				Vector2(peak_x - 7.0, peak_y + 6.0),
+				Vector2(peak_x, peak_y),
+				Vector2(peak_x + 3.0, peak_y + 7.0),
+				Vector2(peak_x - 1.0, peak_y + cap_depth - 2.0),
+				Vector2(peak_x - cap_width * 0.48, peak_y + cap_depth - 5.0)
+			])
+			snow_light.color = Color("#e2edf2")
+			terrain_scenery.add_child(snow_light)
 
 
 func add_desert_scenery(start_x: float, section_width: float) -> void:
@@ -3112,6 +3105,12 @@ func add_unit_ground_details(
 	if terrain == null or terrain.terrain_type != TerrainResource.TerrainType.LAVA:
 		if battlefield_grid.is_adjacent_to_lava(unit.grid_position):
 			add_scorched_ground_details(start_x, section_width)
+			# Use the local map neighbours, with the established battle-view
+			# orientation (map left projects to scene right, and vice versa).
+			if is_normal_biome_ground_at(unit.grid_position + Vector2i.LEFT):
+				add_scorched_biome_edge(start_x, section_width, false)
+			if is_normal_biome_ground_at(unit.grid_position + Vector2i.RIGHT):
+				add_scorched_biome_edge(start_x, section_width, true)
 			return
 
 	if terrain != null:
@@ -3151,6 +3150,21 @@ func add_unit_ground_details(
 		BattlefieldGrid.Biome.SNOW:
 			add_snow_ground_details(start_x, section_width)
 
+
+
+
+func is_normal_biome_ground_at(grid_pos: Vector2i) -> bool:
+	if battlefield_grid == null:
+		return false
+
+	var terrain: TerrainResource = battlefield_grid.get_terrain_at(grid_pos)
+	if terrain != null and terrain.terrain_type in [
+		TerrainResource.TerrainType.LAVA,
+		TerrainResource.TerrainType.FORT
+	]:
+		return false
+
+	return not battlefield_grid.is_adjacent_to_lava(grid_pos)
 
 
 func add_scorched_ground_details(start_x: float, section_width: float) -> void:
@@ -3285,6 +3299,7 @@ func add_scorched_ground_details(start_x: float, section_width: float) -> void:
 			])
 			hot_center.color = ember_light
 			ground_details.add_child(hot_center)
+	# Snow transitions are drawn per unit in add_unit_ground_details().
 
 
 func add_grassland_ground_details(
@@ -5895,3 +5910,142 @@ func add_snow_forest_ground_details(start_x: float, section_width: float) -> voi
 		fleck.size = Vector2(4, 2)
 		fleck.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ground_details.add_child(fleck)
+
+
+
+func add_scorched_biome_edge(
+	start_x: float,
+	section_width: float,
+	biome_on_left: bool
+) -> void:
+	if battlefield_grid == null:
+		return
+
+
+	var ground_y: float = size.y / 2.0 + 80.0
+	var bottom_y: float = size.y
+	var end_x: float = start_x + section_width
+
+	var edge_base := Color("#d8e3e9")
+	var edge_light := Color("#edf5f8")
+	var edge_shadow := Color("#afc4cf")
+
+	match battlefield_grid.biome:
+		BattlefieldGrid.Biome.DESERT:
+			edge_base = Color("#c5aa7e")
+			edge_light = Color("#dbc296")
+			edge_shadow = Color("#b59870")
+		BattlefieldGrid.Biome.GRASSLAND:
+			edge_base = Color("#77965e")
+			edge_light = Color("#9caf73")
+			edge_shadow = Color("#526f48")
+		BattlefieldGrid.Biome.SNOW:
+			pass
+		_:
+			return
+
+	# Snow extends into the scorched ground from the edge
+	# facing the snow-covered terrain.
+	var edge_depth: float = section_width * 0.29
+
+	var snow_edge := Polygon2D.new()
+
+	if biome_on_left:
+		snow_edge.polygon = PackedVector2Array([
+			Vector2(start_x, ground_y),
+			Vector2(start_x + edge_depth * 0.72, ground_y),
+			Vector2(start_x + edge_depth * 0.88, ground_y + 24),
+			Vector2(start_x + edge_depth * 0.60, ground_y + 49),
+			Vector2(start_x + edge_depth, ground_y + 83),
+			Vector2(start_x + edge_depth * 0.67, ground_y + 111),
+			Vector2(start_x + edge_depth * 0.91, bottom_y),
+			Vector2(start_x, bottom_y)
+		])
+	else:
+		snow_edge.polygon = PackedVector2Array([
+			Vector2(end_x - edge_depth * 0.72, ground_y),
+			Vector2(end_x, ground_y),
+			Vector2(end_x, bottom_y),
+			Vector2(end_x - edge_depth * 0.91, bottom_y),
+			Vector2(end_x - edge_depth * 0.67, ground_y + 111),
+			Vector2(end_x - edge_depth, ground_y + 83),
+			Vector2(end_x - edge_depth * 0.60, ground_y + 49),
+			Vector2(end_x - edge_depth * 0.88, ground_y + 24)
+		])
+
+	snow_edge.color = edge_base
+	ground_details.add_child(snow_edge)
+
+	# Reuse the ACTUAL desert ground renderer, clipped to the jagged edge.
+	# This preserves its exact shading, ripple spacing, stones, and grains.
+	if battlefield_grid.biome == BattlefieldGrid.Biome.DESERT:
+		var sand_mask := Polygon2D.new()
+		sand_mask.polygon = snow_edge.polygon
+		sand_mask.color = Color.WHITE
+		sand_mask.clip_children = CanvasItem.CLIP_CHILDREN_ONLY
+		ground_details.add_child(sand_mask)
+
+		var sand_content := Control.new()
+		sand_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sand_mask.add_child(sand_content)
+
+		var original_ground_details: Control = ground_details
+		ground_details = sand_content
+		add_desert_ground_details(start_x, section_width)
+		ground_details = original_ground_details
+		return
+
+	# Small scattered deposits beyond the main snow edge.
+	for i in range(9):
+		var distance: float = (
+			edge_depth * 0.72
+			+ float((i * 17) % 65)
+		)
+
+		var x: float = (
+			start_x + distance
+			if biome_on_left
+			else end_x - distance
+		)
+
+		var y: float = ground_y + 15.0 + float((i * 37) % 125)
+		var patch_width: float = 9.0 + float((i * 7) % 14)
+
+		if y >= bottom_y - 5.0:
+			continue
+
+		var patch := Polygon2D.new()
+		patch.polygon = PackedVector2Array([
+			Vector2(x - patch_width * 0.5, y + 3),
+			Vector2(x - patch_width * 0.25, y),
+			Vector2(x + patch_width * 0.20, y + 1),
+			Vector2(x + patch_width * 0.5, y + 4),
+			Vector2(x + patch_width * 0.12, y + 5)
+		])
+		patch.color = edge_light if i % 3 == 0 else edge_base
+		ground_details.add_child(patch)
+
+	# Blue-grey shadows give the snow some depth.
+	for i in range(5):
+		var distance: float = 18.0 + float((i * 31) % 90)
+
+		var x: float = (
+			start_x + distance
+			if biome_on_left
+			else end_x - distance
+		)
+
+		var y: float = ground_y + 30.0 + float((i * 41) % 125)
+
+		if y >= bottom_y - 4.0:
+			continue
+
+		var shadow := Polygon2D.new()
+		shadow.polygon = PackedVector2Array([
+			Vector2(x - 9, y),
+			Vector2(x + 4, y),
+			Vector2(x + 12, y + 3),
+			Vector2(x - 4, y + 3)
+		])
+		shadow.color = edge_shadow
+		ground_details.add_child(shadow)
