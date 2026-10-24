@@ -1437,11 +1437,10 @@ func add_unit_terrain_scenery(
 			add_snow_scenery(start_x, section_width)
 
 
-
 func add_forest_scenery(center: Vector2) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
 
-	# Desert forests use their existing palm-tree scenery.
+	# Preserve the existing desert palm trees.
 	if battlefield_grid.biome == BattlefieldGrid.Biome.DESERT:
 		add_desert_forest_scenery(center)
 		return
@@ -1451,7 +1450,6 @@ func add_forest_scenery(center: Vector2) -> void:
 	)
 
 	var outline := Color("#292b35")
-
 	var trunk_base := Color("#765139")
 	var trunk_light := Color("#a47a51")
 	var trunk_dark := Color("#49382f")
@@ -1465,233 +1463,272 @@ func add_forest_scenery(center: Vector2) -> void:
 		foliage_light = Color("#668e80")
 		foliage_dark = Color("#24483f")
 
+	# Different heights and positions avoid a uniform tree line.
 	var tree_data: Array[Dictionary] = [
-		{"offset": -110.0, "height": 75.0},
-		{"offset": -55.0, "height": 95.0},
-		{"offset": 55.0, "height": 85.0},
-		{"offset": 110.0, "height": 70.0}
+		{"offset": -116.0, "height": 78.0, "width": 24.0},
+		{"offset": -62.0, "height": 108.0, "width": 31.0},
+		{"offset": 49.0, "height": 91.0, "width": 28.0},
+		{"offset": 116.0, "height": 72.0, "width": 23.0}
 	]
 
 	for data in tree_data:
 		var tree_height: float = float(data["height"])
+		var tree_width: float = float(data["width"])
 		var tree_x: float = center.x + float(data["offset"])
 
-		# All shapes are positioned relative to the tree's base.
 		var tree := Node2D.new()
-		tree.position = Vector2(tree_x + 17.0, ground_y)
+		tree.position = Vector2(tree_x, ground_y)
 		terrain_scenery.add_child(tree)
 
-		# Small ground shadow.
+		# Ground shadow.
 		var ground_shadow := Polygon2D.new()
 		ground_shadow.polygon = PackedVector2Array([
-			Vector2(-18, -2),
-			Vector2(-11, -5),
-			Vector2(12, -5),
-			Vector2(21, -2),
-			Vector2(15, 1),
-			Vector2(-14, 1)
+			Vector2(-tree_width * 0.8, -2),
+			Vector2(-tree_width * 0.5, -5),
+			Vector2(tree_width * 0.7, -5),
+			Vector2(tree_width, -2),
+			Vector2(tree_width * 0.6, 1),
+			Vector2(-tree_width * 0.7, 1)
 		])
-		ground_shadow.color = Color(0, 0, 0, 0.22)
+		ground_shadow.color = Color(0, 0, 0, 0.20)
 		tree.add_child(ground_shadow)
 
-		# Trunk silhouette.
+		# Trunk outline.
 		var trunk_outline := Polygon2D.new()
 		trunk_outline.polygon = PackedVector2Array([
-			Vector2(-7, -31),
-			Vector2(6, -31),
-			Vector2(7, -2),
+			Vector2(-7, -30),
+			Vector2(7, -30),
+			Vector2(8, -2),
 			Vector2(-8, -2)
 		])
 		trunk_outline.color = outline
 		tree.add_child(trunk_outline)
 
-		# Main trunk.
 		var trunk := Polygon2D.new()
 		trunk.polygon = PackedVector2Array([
-			Vector2(-5, -29),
-			Vector2(4, -29),
-			Vector2(5, -4),
+			Vector2(-5, -28),
+			Vector2(5, -28),
+			Vector2(6, -4),
 			Vector2(-6, -4)
 		])
 		trunk.color = trunk_base
 		tree.add_child(trunk)
 
-		# Trunk highlight.
 		var trunk_highlight := Polygon2D.new()
 		trunk_highlight.polygon = PackedVector2Array([
-			Vector2(-5, -29),
-			Vector2(-2, -29),
-			Vector2(-2, -5),
-			Vector2(-5, -5)
+			Vector2(-5, -28),
+			Vector2(-2, -28),
+			Vector2(-2, -4),
+			Vector2(-6, -4)
 		])
 		trunk_highlight.color = trunk_light
 		tree.add_child(trunk_highlight)
 
-		# Trunk shadow.
 		var trunk_shadow := Polygon2D.new()
 		trunk_shadow.polygon = PackedVector2Array([
-			Vector2(2, -29),
-			Vector2(4, -29),
-			Vector2(5, -4),
+			Vector2(2, -28),
+			Vector2(5, -28),
+			Vector2(6, -4),
 			Vector2(1, -4)
 		])
 		trunk_shadow.color = trunk_dark
 		tree.add_child(trunk_shadow)
 
-		# A couple of bark marks.
-		for bark_y in [-19.0, -11.0]:
-			var bark := Line2D.new()
-			bark.width = 1.5
-			bark.default_color = trunk_dark
-			bark.points = PackedVector2Array([
-				Vector2(-3, bark_y),
-				Vector2(1, bark_y + 2)
-			])
-			tree.add_child(bark)
-
-		# Main foliage silhouette.
-		# The angular canopy keeps the same approximate
-		# height and width as the original tree.
-		var top_y: float = -tree_height
-
-		var canopy_outline := Polygon2D.new()
-		canopy_outline.polygon = PackedVector2Array([
-			Vector2(-16, -18),
-			Vector2(-20, -28),
-			Vector2(-17, -39),
-			Vector2(-21, -47),
-			Vector2(-15, -57),
-			Vector2(-12, top_y + 12),
-			Vector2(-5, top_y + 4),
-			Vector2(2, top_y),
-			Vector2(10, top_y + 5),
-			Vector2(15, top_y + 14),
-			Vector2(18, -49),
-			Vector2(22, -39),
-			Vector2(18, -30),
-			Vector2(20, -20),
-			Vector2(11, -16),
-			Vector2(-8, -16)
-		])
-		canopy_outline.color = outline
-		tree.add_child(canopy_outline)
-
-		# Main foliage fill.
-		var canopy := Polygon2D.new()
-		canopy.polygon = PackedVector2Array([
-			Vector2(-14, -20),
-			Vector2(-18, -29),
-			Vector2(-15, -39),
-			Vector2(-19, -47),
-			Vector2(-13, -56),
-			Vector2(-10, top_y + 13),
-			Vector2(-4, top_y + 6),
-			Vector2(2, top_y + 3),
-			Vector2(8, top_y + 7),
-			Vector2(13, top_y + 15),
-			Vector2(16, -48),
-			Vector2(20, -39),
-			Vector2(16, -30),
-			Vector2(18, -22),
-			Vector2(10, -18),
-			Vector2(-7, -18)
-		])
-		canopy.color = foliage_base
-		tree.add_child(canopy)
-
-		# Hard-edged shaded right side.
-		var canopy_shadow := Polygon2D.new()
-		canopy_shadow.polygon = PackedVector2Array([
-			Vector2(3, top_y + 5),
-			Vector2(8, top_y + 7),
-			Vector2(13, top_y + 15),
-			Vector2(16, -48),
-			Vector2(20, -39),
-			Vector2(16, -30),
-			Vector2(18, -22),
-			Vector2(10, -18),
-			Vector2(1, -18),
-			Vector2(6, -33),
-			Vector2(3, -47)
-		])
-		canopy_shadow.color = foliage_dark
-		tree.add_child(canopy_shadow)
-
-		# Upper-left foliage highlight.
-		var canopy_highlight := Polygon2D.new()
-		canopy_highlight.polygon = PackedVector2Array([
-			Vector2(-10, top_y + 14),
-			Vector2(-4, top_y + 7),
-			Vector2(1, top_y + 5),
-			Vector2(4, top_y + 13),
-			Vector2(-3, top_y + 23),
-			Vector2(-13, top_y + 28),
-			Vector2(-15, top_y + 22)
-		])
-		canopy_highlight.color = foliage_light
-		tree.add_child(canopy_highlight)
-
-		# Secondary highlight on the lower foliage.
-		var lower_highlight := Polygon2D.new()
-		lower_highlight.polygon = PackedVector2Array([
-			Vector2(-15, -39),
-			Vector2(-9, -44),
-			Vector2(-2, -40),
-			Vector2(-5, -33),
-			Vector2(-13, -30)
-		])
-		lower_highlight.color = foliage_light
-		tree.add_child(lower_highlight)
-
-		# Snow-covered trees get angular snow patches
-		# rather than flat rectangular caps.
 		if is_snow:
-			var snow_shadow := Color("#b7ceda")
-			var snow_light := Color("#edf5f8")
+			# Snow biome: layered evergreen branches.
+			# Three tiers create a pine-tree silhouette rather than
+			# a recoloured deciduous tree.
+			var tier_data: Array[Dictionary] = [
+				{"top": -tree_height, "bottom": -tree_height * 0.57, "width": tree_width * 0.70},
+				{"top": -tree_height * 0.79, "bottom": -tree_height * 0.31, "width": tree_width * 0.90},
+				{"top": -tree_height * 0.57, "bottom": -15.0, "width": tree_width}
+			]
 
-			var upper_snow := Polygon2D.new()
-			upper_snow.polygon = PackedVector2Array([
-				Vector2(-10, top_y + 14),
+			for tier_index in range(tier_data.size()):
+				var tier: Dictionary = tier_data[tier_index]
+				var top_y: float = float(tier["top"])
+				var bottom_y: float = float(tier["bottom"])
+				var width: float = float(tier["width"])
+
+				# Dark angular outline.
+				var branch_outline := Polygon2D.new()
+				branch_outline.polygon = PackedVector2Array([
+					Vector2(0, top_y - 2),
+					Vector2(-width * 0.48, top_y + (bottom_y - top_y) * 0.48),
+					Vector2(-width - 3, bottom_y),
+					Vector2(-width * 0.52, bottom_y - 3),
+					Vector2(-width * 0.22, bottom_y + 2),
+					Vector2(width * 0.20, bottom_y + 2),
+					Vector2(width * 0.56, bottom_y - 3),
+					Vector2(width + 3, bottom_y),
+					Vector2(width * 0.46, top_y + (bottom_y - top_y) * 0.48)
+				])
+				branch_outline.color = outline
+				tree.add_child(branch_outline)
+
+				# Main green foliage.
+				var branch := Polygon2D.new()
+				branch.polygon = PackedVector2Array([
+					Vector2(0, top_y + 1),
+					Vector2(-width * 0.45, top_y + (bottom_y - top_y) * 0.49),
+					Vector2(-width, bottom_y - 2),
+					Vector2(-width * 0.49, bottom_y - 5),
+					Vector2(-width * 0.20, bottom_y),
+					Vector2(width * 0.18, bottom_y),
+					Vector2(width * 0.53, bottom_y - 5),
+					Vector2(width, bottom_y - 2),
+					Vector2(width * 0.43, top_y + (bottom_y - top_y) * 0.49)
+				])
+				branch.color = foliage_base
+				tree.add_child(branch)
+
+				# Dark right-hand face gives each branch tier depth.
+				var branch_shadow := Polygon2D.new()
+				branch_shadow.polygon = PackedVector2Array([
+					Vector2(0, top_y + 2),
+					Vector2(width * 0.43, top_y + (bottom_y - top_y) * 0.49),
+					Vector2(width, bottom_y - 2),
+					Vector2(width * 0.53, bottom_y - 5),
+					Vector2(width * 0.18, bottom_y),
+					Vector2(0, bottom_y - 1)
+				])
+				branch_shadow.color = foliage_dark
+				tree.add_child(branch_shadow)
+
+				# Cool green highlight on the upper-left foliage.
+				var branch_highlight := Polygon2D.new()
+				branch_highlight.polygon = PackedVector2Array([
+					Vector2(-1, top_y + 5),
+					Vector2(-width * 0.33, top_y + (bottom_y - top_y) * 0.54),
+					Vector2(-width * 0.70, bottom_y - 9),
+					Vector2(-width * 0.23, bottom_y - 12),
+					Vector2(width * 0.04, top_y + (bottom_y - top_y) * 0.35)
+				])
+				branch_highlight.color = foliage_light
+				tree.add_child(branch_highlight)
+
+				# Thick snow rests on each branch tier.
+				# Uneven lower edges suggest accumulated snow.
+				var snow_shadow := Polygon2D.new()
+				snow_shadow.polygon = PackedVector2Array([
+					Vector2(-2, top_y + 1),
+					Vector2(-width * 0.44, top_y + (bottom_y - top_y) * 0.48),
+					Vector2(-width * 0.91, bottom_y - 4),
+					Vector2(-width * 0.65, bottom_y - 7),
+					Vector2(-width * 0.42, bottom_y - 4),
+					Vector2(-width * 0.25, bottom_y - 10),
+					Vector2(-width * 0.06, bottom_y - 7),
+					Vector2(width * 0.20, bottom_y - 12),
+					Vector2(width * 0.50, bottom_y - 7),
+					Vector2(width * 0.84, bottom_y - 5),
+					Vector2(width * 0.38, top_y + (bottom_y - top_y) * 0.49),
+					Vector2(2, top_y + 3)
+				])
+				snow_shadow.color = Color("#b5cbd7")
+				tree.add_child(snow_shadow)
+
+				var snow_light := Polygon2D.new()
+				snow_light.polygon = PackedVector2Array([
+					Vector2(-2, top_y + 1),
+					Vector2(-width * 0.44, top_y + (bottom_y - top_y) * 0.48),
+					Vector2(-width * 0.91, bottom_y - 4),
+					Vector2(-width * 0.65, bottom_y - 10),
+					Vector2(-width * 0.43, bottom_y - 9),
+					Vector2(-width * 0.26, bottom_y - 15),
+					Vector2(-width * 0.08, bottom_y - 13),
+					Vector2(width * 0.08, top_y + (bottom_y - top_y) * 0.24)
+				])
+				snow_light.color = Color("#f0f6fa")
+				tree.add_child(snow_light)
+
+		else:
+			# Preserve the original broadleaf style for grasslands.
+			var top_y: float = -tree_height
+
+			var canopy_outline := Polygon2D.new()
+			canopy_outline.polygon = PackedVector2Array([
+				Vector2(-16, -18),
+				Vector2(-20, -28),
+				Vector2(-17, -39),
+				Vector2(-21, -47),
+				Vector2(-15, -57),
+				Vector2(-12, top_y + 12),
+				Vector2(-5, top_y + 4),
+				Vector2(2, top_y),
+				Vector2(10, top_y + 5),
+				Vector2(15, top_y + 14),
+				Vector2(18, -49),
+				Vector2(22, -39),
+				Vector2(18, -30),
+				Vector2(20, -20),
+				Vector2(11, -16),
+				Vector2(-8, -16)
+			])
+			canopy_outline.color = outline
+			tree.add_child(canopy_outline)
+
+			var canopy := Polygon2D.new()
+			canopy.polygon = PackedVector2Array([
+				Vector2(-14, -20),
+				Vector2(-18, -29),
+				Vector2(-15, -39),
+				Vector2(-19, -47),
+				Vector2(-13, -56),
+				Vector2(-10, top_y + 13),
 				Vector2(-4, top_y + 6),
 				Vector2(2, top_y + 3),
-				Vector2(8, top_y + 8),
-				Vector2(11, top_y + 15),
-				Vector2(3, top_y + 13),
-				Vector2(-2, top_y + 17),
-				Vector2(-8, top_y + 19)
+				Vector2(8, top_y + 7),
+				Vector2(13, top_y + 15),
+				Vector2(16, -48),
+				Vector2(20, -39),
+				Vector2(16, -30),
+				Vector2(18, -22),
+				Vector2(10, -18),
+				Vector2(-7, -18)
 			])
-			upper_snow.color = snow_light
-			tree.add_child(upper_snow)
+			canopy.color = foliage_base
+			tree.add_child(canopy)
 
-			var lower_snow := Polygon2D.new()
-			lower_snow.polygon = PackedVector2Array([
-				Vector2(-17, -47),
-				Vector2(-11, -51),
-				Vector2(-5, -47),
-				Vector2(2, -48),
-				Vector2(8, -44),
-				Vector2(13, -46),
-				Vector2(17, -41),
-				Vector2(10, -40),
-				Vector2(4, -43),
-				Vector2(-4, -40),
-				Vector2(-12, -42)
+			var canopy_shadow := Polygon2D.new()
+			canopy_shadow.polygon = PackedVector2Array([
+				Vector2(3, top_y + 5),
+				Vector2(8, top_y + 7),
+				Vector2(13, top_y + 15),
+				Vector2(16, -48),
+				Vector2(20, -39),
+				Vector2(16, -30),
+				Vector2(18, -22),
+				Vector2(10, -18),
+				Vector2(1, -18),
+				Vector2(6, -33),
+				Vector2(3, -47)
 			])
-			lower_snow.color = snow_shadow
-			tree.add_child(lower_snow)
+			canopy_shadow.color = foliage_dark
+			tree.add_child(canopy_shadow)
 
-			var snow_highlight := Polygon2D.new()
-			snow_highlight.polygon = PackedVector2Array([
-				Vector2(-15, -47),
-				Vector2(-11, -50),
-				Vector2(-5, -47),
-				Vector2(1, -47),
-				Vector2(-5, -44),
-				Vector2(-12, -45)
+			var canopy_highlight := Polygon2D.new()
+			canopy_highlight.polygon = PackedVector2Array([
+				Vector2(-10, top_y + 14),
+				Vector2(-4, top_y + 7),
+				Vector2(1, top_y + 5),
+				Vector2(4, top_y + 13),
+				Vector2(-3, top_y + 23),
+				Vector2(-13, top_y + 28),
+				Vector2(-15, top_y + 22)
 			])
-			snow_highlight.color = snow_light
-			tree.add_child(snow_highlight)
+			canopy_highlight.color = foliage_light
+			tree.add_child(canopy_highlight)
 
+			var lower_highlight := Polygon2D.new()
+			lower_highlight.polygon = PackedVector2Array([
+				Vector2(-15, -39),
+				Vector2(-9, -44),
+				Vector2(-2, -40),
+				Vector2(-5, -33),
+				Vector2(-13, -30)
+			])
+			lower_highlight.color = foliage_light
+			tree.add_child(lower_highlight)
 
 
 
@@ -3085,13 +3122,18 @@ func add_unit_ground_details(
 	if terrain != null:
 		match terrain.terrain_type:
 			TerrainResource.TerrainType.FOREST:
-				if battlefield_grid.biome == BattlefieldGrid.Biome.DESERT:
-					add_desert_ground_details(start_x, section_width)
-					add_desert_forest_ground_details(start_x, section_width)
-				else:
-					add_forest_ground_details(
-						start_x, section_width, draw_shading
-					)
+				match battlefield_grid.biome:
+					BattlefieldGrid.Biome.DESERT:
+						add_desert_ground_details(start_x, section_width)
+						add_desert_forest_ground_details(start_x, section_width)
+
+					BattlefieldGrid.Biome.SNOW:
+						add_snow_forest_ground_details(start_x, section_width)
+
+					_:
+						add_forest_ground_details(
+							start_x, section_width, draw_shading
+						)
 				return
 
 			TerrainResource.TerrainType.FORT:
@@ -5564,3 +5606,135 @@ func add_desert_fort_weathering(start_x: float, section_width: float) -> void:
 	])
 	base_shadow.color = sandstone_shadow
 	terrain_scenery.add_child(base_shadow)
+
+
+func add_snow_forest_ground_details(start_x: float, section_width: float) -> void:
+	var ground_y: float = size.y / 2.0 + 80.0
+	var bottom_y: float = size.y
+
+	var snow_base := Color("#d8e5eb")
+	var snow_light := Color("#f0f6f9")
+	var snow_shadow := Color("#b5cbd5")
+	var snow_deep := Color("#93b0bd")
+	var pine_dark := Color("#38554a")
+	var pine_mid := Color("#587365")
+	var bark_color := Color("#76665a")
+
+	# Snow-covered forest floor.
+	var base := Polygon2D.new()
+	base.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y + 8),
+		Vector2(start_x + section_width * 0.18, ground_y + 5),
+		Vector2(start_x + section_width * 0.42, ground_y + 10),
+		Vector2(start_x + section_width * 0.68, ground_y + 6),
+		Vector2(start_x + section_width, ground_y + 9),
+		Vector2(start_x + section_width, bottom_y),
+		Vector2(start_x, bottom_y)
+	])
+	base.color = snow_base
+	ground_details.add_child(base)
+
+	# Broad, irregular blue shadows between the trees.
+	for i in range(4):
+		var x: float = start_x + section_width * (0.08 + float(i) * 0.26)
+		var y: float = ground_y + 27.0 + float((i * 31) % 68)
+		var width: float = 45.0 + float((i * 17) % 24)
+
+		var shadow := Polygon2D.new()
+		shadow.polygon = PackedVector2Array([
+			Vector2(x - width, y + 4),
+			Vector2(x - width * 0.48, y - 2),
+			Vector2(x + width * 0.25, y),
+			Vector2(x + width, y + 6),
+			Vector2(x + width * 0.38, y + 11),
+			Vector2(x - width * 0.55, y + 9)
+		])
+		shadow.color = snow_shadow
+		ground_details.add_child(shadow)
+
+	# Uneven snowdrifts, with bright upper surfaces.
+	for i in range(7):
+		var x: float = start_x + section_width * (0.08 + float(i) * 0.14)
+		var y: float = ground_y + 17.0 + float((i * 37) % 125)
+		var width: float = 19.0 + float((i * 13) % 18)
+
+		var drift_shadow := Polygon2D.new()
+		drift_shadow.polygon = PackedVector2Array([
+			Vector2(x - width, y + 5),
+			Vector2(x - width * 0.35, y - 2),
+			Vector2(x + width * 0.30, y),
+			Vector2(x + width, y + 6),
+			Vector2(x + width * 0.55, y + 10),
+			Vector2(x - width * 0.65, y + 9)
+		])
+		drift_shadow.color = snow_shadow
+		ground_details.add_child(drift_shadow)
+
+		var drift_top := Polygon2D.new()
+		drift_top.polygon = PackedVector2Array([
+			Vector2(x - width * 0.85, y + 4),
+			Vector2(x - width * 0.30, y - 2),
+			Vector2(x + width * 0.25, y),
+			Vector2(x + width * 0.75, y + 5),
+			Vector2(x + width * 0.15, y + 4)
+		])
+		drift_top.color = snow_light
+		ground_details.add_child(drift_top)
+
+	# Pine needles poking through the snow.
+	# Keep them sparse so the ground still reads as snowy.
+	for i in range(24):
+		var x: float = start_x + 14.0 + float(
+			(i * 79) % int(maxf(1.0, section_width - 28.0))
+		)
+		var y: float = ground_y + 20.0 + float((i * 47) % 145)
+
+		if y >= bottom_y - 9.0:
+			continue
+
+		var needle := Line2D.new()
+		needle.width = 2.0
+		needle.default_color = pine_dark if i % 3 == 0 else pine_mid
+		needle.points = PackedVector2Array([
+			Vector2(x - 5, y + 1),
+			Vector2(x, y - 2),
+			Vector2(x + 4, y + 1)
+		])
+		ground_details.add_child(needle)
+
+	# Occasional small pieces of exposed bark.
+	for i in range(8):
+		var x: float = start_x + 24.0 + float(
+			(i * 113) % int(maxf(1.0, section_width - 48.0))
+		)
+		var y: float = ground_y + 32.0 + float((i * 59) % 115)
+
+		if y >= bottom_y - 8.0:
+			continue
+
+		var bark := Polygon2D.new()
+		bark.polygon = PackedVector2Array([
+			Vector2(x - 5, y + 1),
+			Vector2(x - 1, y - 2),
+			Vector2(x + 5, y),
+			Vector2(x + 2, y + 3)
+		])
+		bark.color = bark_color
+		ground_details.add_child(bark)
+
+	# Tiny ice-blue flecks scattered across the surface.
+	for i in range(15):
+		var x: float = start_x + 12.0 + float(
+			(i * 97) % int(maxf(1.0, section_width - 24.0))
+		)
+		var y: float = ground_y + 18.0 + float((i * 41) % 150)
+
+		if y >= bottom_y - 5.0:
+			continue
+
+		var fleck := ColorRect.new()
+		fleck.color = snow_deep if i % 3 == 0 else snow_light
+		fleck.position = Vector2(x, y)
+		fleck.size = Vector2(4, 2)
+		fleck.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ground_details.add_child(fleck)
