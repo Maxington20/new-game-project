@@ -4594,64 +4594,196 @@ func add_snow_scenery(start_x: float, section_width: float) -> void:
 	terrain_scenery.add_child(snowbank)
 
 
+
 func add_snow_ground_details(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
+	var bottom_y: float = size.y
 
 	var snow_highlight := Color("#f0f6fa")
+	var snow_light := Color("#e5eff5")
 	var snow_shadow := Color("#b8cad6")
+	var snow_deep_shadow := Color("#a5bdcc")
 	var ice_color := Color("#a8d0df")
+	var ice_light := Color("#d2edf5")
+	var rock_dark := Color("#657d8d")
+	var rock_light := Color("#94aab8")
 
-	for i in range(12):
-		var x: float = start_x + 18.0 + float(i) * (section_width - 36.0) / 12.0
-		var y: float = ground_y + 18.0 + float((i * 23) % 65)
+	# Broad, irregular snowdrifts add depth without covering
+	# the existing snowy ground or distracting from the units.
+	var drift_data := [
+		Vector4(0.03, 0.30, 0.20, 0.11),
+		Vector4(0.27, 0.40, 0.35, 0.15),
+		Vector4(0.69, 0.25, 0.25, 0.12),
+		Vector4(0.08, 0.72, 0.32, 0.16),
+		Vector4(0.48, 0.80, 0.43, 0.19)
+	]
 
-		# Small wind-shaped snowdrifts.
-		if i % 2 == 0:
-			var drift := Line2D.new()
-			drift.width = 3.0
-			drift.default_color = snow_highlight
-			drift.points = PackedVector2Array([
-				Vector2(x - 12.0, y + 2.0),
-				Vector2(x - 4.0, y),
-				Vector2(x + 6.0, y),
-				Vector2(x + 12.0, y + 2.0)
-			])
-			ground_details.add_child(drift)
+	for i in range(drift_data.size()):
+		var data: Vector4 = drift_data[i]
+		var x: float = start_x + data.x * section_width
+		var y: float = ground_y + data.y * (bottom_y - ground_y)
+		var width: float = data.z * section_width
+		var height: float = data.w * 90.0
 
-			var shadow := ColorRect.new()
-			shadow.color = snow_shadow
-			shadow.position = Vector2(x - 5.0, y + 5.0)
-			shadow.size = Vector2(12.0, 2.0)
-			shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ground_details.add_child(shadow)
+		# Cool shadow along the lower edge.
+		var shadow := Polygon2D.new()
+		shadow.polygon = PackedVector2Array([
+			Vector2(x, y + 3),
+			Vector2(x + width * 0.18, y - height * 0.35),
+			Vector2(x + width * 0.44, y - height * 0.65),
+			Vector2(x + width * 0.70, y - height * 0.25),
+			Vector2(x + width, y + 4),
+			Vector2(x + width * 0.80, y + 9),
+			Vector2(x + width * 0.24, y + 8)
+		])
+		shadow.color = snow_shadow
+		ground_details.add_child(shadow)
 
-		# Occasional small patches of exposed ice.
-		if i % 4 == 1:
-			var ice := ColorRect.new()
-			ice.color = ice_color
-			ice.position = Vector2(x - 8.0, y + 6.0)
-			ice.size = Vector2(16.0, 4.0)
-			ice.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ground_details.add_child(ice)
+		# Main snow surface.
+		var drift := Polygon2D.new()
+		drift.polygon = PackedVector2Array([
+			Vector2(x + 3, y + 2),
+			Vector2(x + width * 0.20, y - height * 0.35),
+			Vector2(x + width * 0.44, y - height * 0.65),
+			Vector2(x + width * 0.68, y - height * 0.25),
+			Vector2(x + width - 3, y + 2),
+			Vector2(x + width * 0.68, y + 3),
+			Vector2(x + width * 0.22, y + 3)
+		])
+		drift.color = snow_light
+		ground_details.add_child(drift)
 
-			var reflection := ColorRect.new()
-			reflection.color = snow_highlight
-			reflection.position = Vector2(3.0, 1.0)
-			reflection.size = Vector2(6.0, 1.0)
-			reflection.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ice.add_child(reflection)
+		# Small highlight on the wind-facing ridge.
+		var highlight := Line2D.new()
+		highlight.width = 2.0
+		highlight.default_color = snow_highlight
+		highlight.points = PackedVector2Array([
+			Vector2(x + width * 0.15, y - height * 0.18),
+			Vector2(x + width * 0.44, y - height * 0.65),
+			Vector2(x + width * 0.61, y - height * 0.36)
+		])
+		ground_details.add_child(highlight)
 
-		# Tiny scattered snow flecks.
-		if i % 3 == 0:
-			var fleck := ColorRect.new()
-			fleck.color = snow_highlight
-			fleck.position = Vector2(x + 9.0, y + 12.0)
-			fleck.size = Vector2(4.0, 2.0)
-			fleck.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			ground_details.add_child(fleck)
+	# Exposed ice patches with angular, uneven silhouettes.
+	# Their positions and sizes deliberately vary.
+	var ice_patches := [
+		Vector4(0.17, 0.49, 27.0, 7.0),
+		Vector4(0.62, 0.37, 41.0, 9.0),
+		Vector4(0.35, 0.67, 32.0, 6.0),
+		Vector4(0.82, 0.75, 47.0, 10.0)
+	]
 
+	for patch in ice_patches:
+		var x: float = start_x + patch.x * section_width
+		var y: float = ground_y + patch.y * (bottom_y - ground_y)
+		var width: float = patch.z
+		var height: float = patch.w
 
+		var ice_shadow := Polygon2D.new()
+		ice_shadow.polygon = PackedVector2Array([
+			Vector2(x - width * 0.52, y + 1),
+			Vector2(x - width * 0.30, y - height * 0.45),
+			Vector2(x + width * 0.24, y - height * 0.35),
+			Vector2(x + width * 0.54, y + 1),
+			Vector2(x + width * 0.32, y + height * 0.55),
+			Vector2(x - width * 0.26, y + height * 0.45)
+		])
+		ice_shadow.color = snow_deep_shadow
+		ground_details.add_child(ice_shadow)
 
+		var ice := Polygon2D.new()
+		ice.polygon = PackedVector2Array([
+			Vector2(x - width * 0.43, y),
+			Vector2(x - width * 0.25, y - height * 0.45),
+			Vector2(x + width * 0.22, y - height * 0.30),
+			Vector2(x + width * 0.44, y),
+			Vector2(x + width * 0.24, y + height * 0.35),
+			Vector2(x - width * 0.22, y + height * 0.28)
+		])
+		ice.color = ice_color
+		ground_details.add_child(ice)
+
+		var reflection := Polygon2D.new()
+		reflection.polygon = PackedVector2Array([
+			Vector2(x - width * 0.24, y - height * 0.12),
+			Vector2(x - width * 0.10, y - height * 0.28),
+			Vector2(x + width * 0.17, y - height * 0.16),
+			Vector2(x + width * 0.04, y)
+		])
+		reflection.color = ice_light
+		ground_details.add_child(reflection)
+
+	# A handful of partially buried rocks.
+	# Keep them small so the snowy terrain remains dominant.
+	var rocks := [
+		Vector3(0.10, 0.59, 0.8),
+		Vector3(0.43, 0.46, 1.1),
+		Vector3(0.76, 0.56, 0.9),
+		Vector3(0.92, 0.88, 1.2)
+	]
+
+	for rock_data in rocks:
+		var x: float = start_x + rock_data.x * section_width
+		var y: float = ground_y + rock_data.y * (bottom_y - ground_y)
+		var scale_factor: float = rock_data.z
+
+		var rock := Polygon2D.new()
+		rock.polygon = PackedVector2Array([
+			Vector2(x - 9 * scale_factor, y + 3),
+			Vector2(x - 5 * scale_factor, y - 5 * scale_factor),
+			Vector2(x + 2 * scale_factor, y - 8 * scale_factor),
+			Vector2(x + 9 * scale_factor, y),
+			Vector2(x + 11 * scale_factor, y + 4)
+		])
+		rock.color = rock_dark
+		ground_details.add_child(rock)
+
+		var rock_face := Polygon2D.new()
+		rock_face.polygon = PackedVector2Array([
+			Vector2(x - 7 * scale_factor, y + 1),
+			Vector2(x - 4 * scale_factor, y - 4 * scale_factor),
+			Vector2(x + 2 * scale_factor, y - 7 * scale_factor),
+			Vector2(x + 1 * scale_factor, y + 2)
+		])
+		rock_face.color = rock_light
+		ground_details.add_child(rock_face)
+
+		# Snow resting on the upper surface.
+		var snow_cap := Polygon2D.new()
+		snow_cap.polygon = PackedVector2Array([
+			Vector2(x - 6 * scale_factor, y - 3 * scale_factor),
+			Vector2(x - 3 * scale_factor, y - 6 * scale_factor),
+			Vector2(x + 2 * scale_factor, y - 8 * scale_factor),
+			Vector2(x + 6 * scale_factor, y - 3 * scale_factor),
+			Vector2(x + 1 * scale_factor, y - 4 * scale_factor)
+		])
+		snow_cap.color = snow_highlight
+		ground_details.add_child(snow_cap)
+
+	# Sparse wind-swept snow marks.
+	# Use staggered positions instead of evenly spaced rows.
+	for i in range(22):
+		var x: float = start_x + 12.0 + float(
+			(i * 79 + 31) % int(maxf(1.0, section_width - 24.0))
+		)
+		var y: float = ground_y + 18.0 + float(
+			(i * 47 + 13) % int(maxf(1.0, bottom_y - ground_y - 30.0))
+		)
+
+		var length: float = 5.0 + float(i % 4) * 3.0
+
+		var snow_mark := Line2D.new()
+		snow_mark.width = 2.0 if i % 3 == 0 else 1.5
+		snow_mark.default_color = (
+			snow_highlight if i % 3 == 0 else snow_shadow
+		)
+		snow_mark.points = PackedVector2Array([
+			Vector2(x - length * 0.5, y + 1),
+			Vector2(x - length * 0.15, y - 1),
+			Vector2(x + length * 0.30, y - 1),
+			Vector2(x + length * 0.5, y)
+		])
+		ground_details.add_child(snow_mark)
 
 
 func animate_defeat(unit: Unit) -> void:
