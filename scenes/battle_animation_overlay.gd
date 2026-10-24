@@ -4266,24 +4266,332 @@ func add_lava_ground_details(start_x: float, section_width: float) -> void:
 		ground_details.add_child(ember)
 
 
-
 func add_snow_scenery(start_x: float, section_width: float) -> void:
 	var ground_y: float = size.y / 2.0 + 80.0
 
-	# Distant snow-covered hills.
-	var hills := Polygon2D.new()
-	hills.color = Color("#b2c9d7")
-	hills.polygon = PackedVector2Array([
+	var outline := Color("#405568")
+	var distant_shadow := Color("#819ead")
+	var distant_light := Color("#a9c0cb")
+	var mountain_shadow := Color("#7795a8")
+	var mountain_mid := Color("#a5bfcd")
+	var mountain_light := Color("#d1e0e8")
+	var snow_white := Color("#f0f6f9")
+	var snow_blue := Color("#bfd5e1")
+
+	# Use the section's position to create a different arrangement
+	# on the left and right sides of the battlefield.
+	var is_right_side: bool = start_x >= size.x * 0.4
+
+	# Distant mountain range: low contrast and irregular.
+	var distant_points := PackedVector2Array([
 		Vector2(start_x, ground_y),
-		Vector2(start_x, ground_y - 20.0),
-		Vector2(start_x + section_width * 0.22, ground_y - 75.0),
-		Vector2(start_x + section_width * 0.48, ground_y - 35.0),
-		Vector2(start_x + section_width * 0.76, ground_y - 90.0),
-		Vector2(start_x + section_width, ground_y - 25.0),
+		Vector2(start_x, ground_y - 24),
+		Vector2(start_x + section_width * 0.09, ground_y - 48),
+		Vector2(start_x + section_width * 0.17, ground_y - 40),
+		Vector2(start_x + section_width * 0.31, ground_y - 77),
+		Vector2(start_x + section_width * 0.39, ground_y - 55),
+		Vector2(start_x + section_width * 0.52, ground_y - 66),
+		Vector2(start_x + section_width * 0.67, ground_y - 37),
+		Vector2(start_x + section_width * 0.81, ground_y - 72),
+		Vector2(start_x + section_width * 0.93, ground_y - 46),
+		Vector2(start_x + section_width, ground_y - 52),
 		Vector2(start_x + section_width, ground_y)
 	])
-	terrain_scenery.add_child(hills)
 
+	if is_right_side:
+		distant_points = PackedVector2Array([
+			Vector2(start_x, ground_y),
+			Vector2(start_x, ground_y - 46),
+			Vector2(start_x + section_width * 0.13, ground_y - 65),
+			Vector2(start_x + section_width * 0.25, ground_y - 43),
+			Vector2(start_x + section_width * 0.38, ground_y - 83),
+			Vector2(start_x + section_width * 0.49, ground_y - 58),
+			Vector2(start_x + section_width * 0.63, ground_y - 69),
+			Vector2(start_x + section_width * 0.77, ground_y - 35),
+			Vector2(start_x + section_width * 0.91, ground_y - 57),
+			Vector2(start_x + section_width, ground_y - 32),
+			Vector2(start_x + section_width, ground_y)
+		])
+
+	var distant := Polygon2D.new()
+	distant.color = distant_shadow
+	distant.polygon = distant_points
+	terrain_scenery.add_child(distant)
+
+	# Light-facing facets on distant peaks.
+	var distant_peaks: Array[Vector2] = [
+		Vector2(0.31, 77),
+		Vector2(0.81, 72)
+	]
+
+	if is_right_side:
+		distant_peaks = [
+			Vector2(0.13, 65),
+			Vector2(0.38, 83),
+			Vector2(0.91, 57)
+		]
+
+	for peak in distant_peaks:
+		var x: float = start_x + peak.x * section_width
+		var y: float = ground_y - peak.y
+
+		var facet := Polygon2D.new()
+		facet.color = distant_light
+		facet.polygon = PackedVector2Array([
+			Vector2(x, y),
+			Vector2(x + 18, y + 24),
+			Vector2(x + 38, ground_y),
+			Vector2(x + 3, ground_y)
+		])
+		terrain_scenery.add_child(facet)
+
+	# Foreground mountains have intentionally different shapes.
+	# Each entry contains normalized horizontal points and heights
+	# measured upward from the ground.
+	var mountain_profiles: Array[PackedVector2Array] = []
+
+	if is_right_side:
+		mountain_profiles = [
+			PackedVector2Array([
+				Vector2(0.00, 0),
+				Vector2(0.07, 48),
+				Vector2(0.14, 91),
+				Vector2(0.17, 107),
+				Vector2(0.21, 92),
+				Vector2(0.25, 61),
+				Vector2(0.34, 0)
+			]),
+			PackedVector2Array([
+				Vector2(0.24, 0),
+				Vector2(0.34, 39),
+				Vector2(0.41, 75),
+				Vector2(0.47, 116),
+				Vector2(0.49, 121),
+				Vector2(0.54, 91),
+				Vector2(0.60, 63),
+				Vector2(0.70, 0)
+			]),
+			PackedVector2Array([
+				Vector2(0.65, 0),
+				Vector2(0.72, 34),
+				Vector2(0.80, 59),
+				Vector2(0.85, 83),
+				Vector2(0.89, 72),
+				Vector2(0.95, 39),
+				Vector2(1.00, 0)
+			])
+		]
+	else:
+		mountain_profiles = [
+			PackedVector2Array([
+				Vector2(0.00, 0),
+				Vector2(0.07, 35),
+				Vector2(0.16, 59),
+				Vector2(0.22, 89),
+				Vector2(0.27, 77),
+				Vector2(0.34, 43),
+				Vector2(0.43, 0)
+			]),
+			PackedVector2Array([
+				Vector2(0.29, 0),
+				Vector2(0.37, 44),
+				Vector2(0.44, 85),
+				Vector2(0.50, 122),
+				Vector2(0.53, 130),
+				Vector2(0.58, 101),
+				Vector2(0.64, 72),
+				Vector2(0.73, 0)
+			]),
+			PackedVector2Array([
+				Vector2(0.65, 0),
+				Vector2(0.72, 28),
+				Vector2(0.80, 64),
+				Vector2(0.87, 77),
+				Vector2(0.92, 48),
+				Vector2(1.00, 0)
+			])
+		]
+
+	for mountain_index in range(mountain_profiles.size()):
+		var profile: PackedVector2Array = mountain_profiles[mountain_index]
+
+		var body_points := PackedVector2Array()
+		var peak_index: int = 0
+		var peak_height: float = 0.0
+
+		for i in range(profile.size()):
+			var point: Vector2 = profile[i]
+
+			body_points.append(Vector2(
+				start_x + point.x * section_width,
+				ground_y - point.y
+			))
+
+			if point.y > peak_height:
+				peak_height = point.y
+				peak_index = i
+
+		# Angular dark silhouette.
+		var mountain_outline := Polygon2D.new()
+		mountain_outline.color = outline
+		mountain_outline.polygon = body_points
+		mountain_outline.position = Vector2(0, -3)
+		terrain_scenery.add_child(mountain_outline)
+
+		# Main rocky mountain.
+		var mountain := Polygon2D.new()
+		mountain.color = mountain_mid
+		mountain.polygon = body_points
+		terrain_scenery.add_child(mountain)
+
+		var peak_pos: Vector2 = body_points[peak_index]
+		var right_base: Vector2 = body_points[body_points.size() - 1]
+		var left_base: Vector2 = body_points[0]
+
+		# Broad shadow face on the right side.
+		var shadow := Polygon2D.new()
+		shadow.color = mountain_shadow
+		shadow.polygon = PackedVector2Array([
+			peak_pos,
+			Vector2(
+				peak_pos.x + (right_base.x - peak_pos.x) * 0.28,
+				peak_pos.y + peak_height * 0.38
+			),
+			right_base,
+			Vector2(
+				peak_pos.x + (right_base.x - peak_pos.x) * 0.08,
+				ground_y
+			)
+		])
+		terrain_scenery.add_child(shadow)
+
+		# Irregular light-facing rock facet.
+		var light_facet := Polygon2D.new()
+		light_facet.color = mountain_light
+		light_facet.polygon = PackedVector2Array([
+			peak_pos,
+			Vector2(
+				peak_pos.x - (peak_pos.x - left_base.x) * 0.47,
+				peak_pos.y + peak_height * 0.55
+			),
+			Vector2(
+				peak_pos.x - (peak_pos.x - left_base.x) * 0.18,
+				peak_pos.y + peak_height * 0.67
+			),
+			Vector2(
+				peak_pos.x + 7,
+				peak_pos.y + peak_height * 0.31
+			)
+		])
+		terrain_scenery.add_child(light_facet)
+
+		# Different snow coverage on each mountain.
+		var snow_coverage: float = 0.0
+
+		match mountain_index:
+			0:
+				snow_coverage = 0.27
+			1:
+				snow_coverage = 0.46
+			2:
+				snow_coverage = 0.20
+
+		if is_right_side:
+			snow_coverage += 0.06 if mountain_index == 0 else -0.03
+
+		var cap_depth: float = peak_height * snow_coverage
+		var left_span: float = peak_pos.x - left_base.x
+		var right_span: float = right_base.x - peak_pos.x
+
+		# Uneven snowcap, with broken edges rather than
+		# the same triangular shape on every peak.
+		var snowcap := Polygon2D.new()
+		snowcap.color = snow_white
+		snowcap.polygon = PackedVector2Array([
+			peak_pos,
+			Vector2(
+				peak_pos.x + right_span * snow_coverage,
+				peak_pos.y + cap_depth
+			),
+			Vector2(
+				peak_pos.x + right_span * snow_coverage * 0.66,
+				peak_pos.y + cap_depth * 0.74
+			),
+			Vector2(
+				peak_pos.x + right_span * 0.11,
+				peak_pos.y + cap_depth * 1.13
+			),
+			Vector2(
+				peak_pos.x - left_span * 0.09,
+				peak_pos.y + cap_depth * 0.76
+			),
+			Vector2(
+				peak_pos.x - left_span * snow_coverage * 0.75,
+				peak_pos.y + cap_depth * 1.04
+			)
+		])
+		terrain_scenery.add_child(snowcap)
+
+		# Blue shadow in the snowcap.
+		var shaded_snow := Polygon2D.new()
+		shaded_snow.color = snow_blue
+		shaded_snow.polygon = PackedVector2Array([
+			peak_pos,
+			Vector2(
+				peak_pos.x + right_span * snow_coverage,
+				peak_pos.y + cap_depth
+			),
+			Vector2(
+				peak_pos.x + right_span * snow_coverage * 0.66,
+				peak_pos.y + cap_depth * 0.74
+			),
+			Vector2(
+				peak_pos.x + right_span * 0.11,
+				peak_pos.y + cap_depth * 1.13
+			),
+			Vector2(
+				peak_pos.x + 3,
+				peak_pos.y + cap_depth * 0.34
+			)
+		])
+		terrain_scenery.add_child(shaded_snow)
+
+		# Exposed rock crevices, varied by mountain.
+		if mountain_index != 0:
+			var crevice := Line2D.new()
+			crevice.width = 2.0
+			crevice.default_color = outline
+			crevice.points = PackedVector2Array([
+				Vector2(
+					peak_pos.x + right_span * 0.15,
+					peak_pos.y + peak_height * 0.43
+				),
+				Vector2(
+					peak_pos.x + right_span * 0.20,
+					peak_pos.y + peak_height * 0.56
+				),
+				Vector2(
+					peak_pos.x + right_span * 0.17,
+					peak_pos.y + peak_height * 0.67
+				)
+			])
+			terrain_scenery.add_child(crevice)
+
+	# Soft, irregular snowbanks at the foot of the mountains.
+	var snowbank := Polygon2D.new()
+	snowbank.color = Color("#dce8ed")
+	snowbank.polygon = PackedVector2Array([
+		Vector2(start_x, ground_y),
+		Vector2(start_x, ground_y - 7),
+		Vector2(start_x + section_width * 0.12, ground_y - 11),
+		Vector2(start_x + section_width * 0.29, ground_y - 6),
+		Vector2(start_x + section_width * 0.47, ground_y - 13),
+		Vector2(start_x + section_width * 0.66, ground_y - 8),
+		Vector2(start_x + section_width * 0.85, ground_y - 12),
+		Vector2(start_x + section_width, ground_y - 7),
+		Vector2(start_x + section_width, ground_y)
+	])
+	terrain_scenery.add_child(snowbank)
 
 
 func add_snow_ground_details(start_x: float, section_width: float) -> void:
