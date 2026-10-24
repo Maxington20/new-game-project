@@ -65,6 +65,15 @@ var level_stats_column: VBoxContainer
 var promotion_picker: PromotionSelection
 var sky_scenery: Control
 var ground_details: Control
+var snowfall_layer: Control
+var snowflakes: Array[ColorRect] = []
+var snowflake_velocities: Array[Vector2] = []
+var snowfall_time: float = 0.0
+var ember_layer: Control
+var embers: Array[ColorRect] = []
+var ember_velocities: Array[Vector2] = []
+var ember_origins: Array[float] = []
+var ember_lifetimes: Array[float] = []
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -76,6 +85,8 @@ func _ready() -> void:
 	setup_sky_scenery()
 	setup_terrain_scenery()
 	setup_ground_details()
+	setup_volcanic_embers()
+	setup_snowfall()
 	
 	enemy_sprite.color = ENEMY_COLOR
 	player_sprite.color = PLAYER_COLOR
@@ -192,6 +203,8 @@ func setup_battle(attacker: Unit, defender: Unit) -> void:
 	update_terrain_scenery()
 	update_sky_scenery()
 	update_ground_details()
+	update_volcanic_embers()
+	update_snowfall()
 	
 	player_name.text = player_unit.unit_data.character_name
 	enemy_name.text = enemy_unit.unit_data.character_name
@@ -6049,3 +6062,257 @@ func add_scorched_biome_edge(
 		])
 		shadow.color = edge_shadow
 		ground_details.add_child(shadow)
+
+
+func setup_snowfall() -> void:
+	snowfall_layer = Control.new()
+	snowfall_layer.name = "Snowfall"
+	snowfall_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	snowfall_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	snowfall_layer.clip_contents = true
+	background.add_child(snowfall_layer)
+
+
+func update_snowfall() -> void:
+	for flake in snowflakes:
+		if is_instance_valid(flake):
+			flake.queue_free()
+
+	snowflakes.clear()
+	snowflake_velocities.clear()
+	snowfall_time = 0.0
+
+	if battlefield_grid == null:
+		return
+
+	if battlefield_grid.biome != BattlefieldGrid.Biome.SNOW:
+		return
+
+	var half_width: float = size.x / 2.0
+
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+
+	for side in range(2):
+		# The enemy is displayed on the left.
+		var unit: Unit = enemy_unit if side == 0 else player_unit
+
+		if unit == null:
+			continue
+
+		var terrain: TerrainResource = battlefield_grid.get_terrain_at(
+			unit.grid_position
+		)
+
+		var is_lava: bool = (
+			terrain != null
+			and terrain.terrain_type == TerrainResource.TerrainType.LAVA
+		)
+
+		var is_scorched: bool = (
+			not is_lava
+			and battlefield_grid.is_adjacent_to_lava(unit.grid_position)
+		)
+
+		if is_lava or is_scorched:
+			continue
+
+		var start_x: float = float(side) * half_width
+
+		for i in range(24):
+			var flake := ColorRect.new()
+
+			var flake_size: float = rng.randf_range(2.0, 4.0)
+
+			flake.size = Vector2(flake_size, flake_size)
+			flake.position = Vector2(
+				rng.randf_range(start_x + 4.0, start_x + half_width - 4.0),
+				rng.randf_range(0.0, size.y)
+			)
+
+			flake.color = Color(
+				0.94,
+				0.97,
+				1.0,
+				rng.randf_range(0.35, 0.75)
+			)
+
+			flake.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+			snowfall_layer.add_child(flake)
+			snowflakes.append(flake)
+
+			snowflake_velocities.append(Vector2(
+				rng.randf_range(-9.0, 4.0),
+				rng.randf_range(13.0, 30.0)
+			))
+
+func _process(delta: float) -> void:
+	if not snowflakes.is_empty():
+		snowfall_time += delta
+
+		var half_width: float = size.x / 2.0
+
+		for i in range(snowflakes.size()):
+			var flake: ColorRect = snowflakes[i]
+
+			if not is_instance_valid(flake):
+				continue
+
+			var velocity: Vector2 = snowflake_velocities[i]
+
+			# Determine which half of the battlefield owns this flake.
+			# Each snowy side receives 24 flakes.
+			var side: int = floori(float(i) / 24.0)
+
+			var start_x: float = float(side) * half_width
+			var end_x: float = start_x + half_width
+
+			var wind: float = sin(
+				snowfall_time * 0.8 + float(i) * 1.7
+			) * 5.0
+
+			flake.position += Vector2(
+				velocity.x + wind,
+				velocity.y
+			) * delta
+
+			# Recycle falling snow at the top of its own section.
+			if flake.position.y > size.y:
+				flake.position.y = -5.0
+				flake.position.x = start_x + fposmod(
+					flake.position.x - start_x + float(i * 37),
+					half_width
+				)
+
+			# Keep flakes inside their assigned terrain section.
+			if flake.position.x < start_x:
+				flake.position.x = end_x - 5.0
+
+			elif flake.position.x >= end_x:
+				flake.position.x = start_x
+
+	# Volcanic embers run independently of snowfall.
+	animate_volcanic_embers(delta)
+	
+func setup_volcanic_embers() -> void:
+	ember_layer = Control.new()
+	ember_layer.name = "VolcanicEmbers"
+	ember_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ember_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ember_layer.clip_contents = true
+	background.add_child(ember_layer)
+
+func update_volcanic_embers() -> void:
+	for ember in embers:
+		if is_instance_valid(ember):
+			ember.queue_free()
+
+	embers.clear()
+	ember_velocities.clear()
+	ember_origins.clear()
+	ember_lifetimes.clear()
+
+	if battlefield_grid == null:
+		return
+
+	var half_width: float = size.x / 2.0
+
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+
+	for side in range(2):
+		# Enemy on the left, player on the right.
+		var unit: Unit = enemy_unit if side == 0 else player_unit
+
+		if unit == null:
+			continue
+
+		var terrain: TerrainResource = battlefield_grid.get_terrain_at(
+			unit.grid_position
+		)
+
+		var is_lava: bool = (
+			terrain != null
+			and terrain.terrain_type == TerrainResource.TerrainType.LAVA
+		)
+
+		var is_scorched: bool = (
+			not is_lava
+			and battlefield_grid.is_adjacent_to_lava(unit.grid_position)
+		)
+
+		if not is_lava and not is_scorched:
+			continue
+
+		var start_x: float = float(side) * half_width
+		var count: int = 24 if is_lava else 10
+
+		for i in range(count):
+			var ember := ColorRect.new()
+
+			var particle_size: float = rng.randf_range(2.0, 4.0)
+
+			ember.size = Vector2(particle_size, particle_size)
+
+			ember.color = (
+				Color("#ffc34e")
+				if i % 3 == 0
+				else Color("#ff7628")
+			)
+
+			ember.color.a = rng.randf_range(0.45, 0.85)
+			ember.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+			var origin_x: float = rng.randf_range(
+				start_x + 12.0,
+				start_x + half_width - 12.0
+			)
+
+			ember.position = Vector2(
+				origin_x,
+				rng.randf_range(size.y * 0.72, size.y)
+			)
+
+			ember_layer.add_child(ember)
+
+			embers.append(ember)
+			ember_origins.append(origin_x)
+
+			ember_velocities.append(Vector2(
+				rng.randf_range(-7.0, 7.0),
+				-rng.randf_range(18.0, 42.0)
+			))
+
+			ember_lifetimes.append(rng.randf_range(0.0, 3.0))
+func animate_volcanic_embers(delta: float) -> void:
+	for i in range(embers.size()):
+		var ember: ColorRect = embers[i]
+
+		if not is_instance_valid(ember):
+			continue
+
+		ember_lifetimes[i] += delta
+
+		var velocity: Vector2 = ember_velocities[i]
+		var drift: float = sin(ember_lifetimes[i] * 2.0 + float(i)) * 7.0
+
+		ember.position += Vector2(
+			velocity.x + drift,
+			velocity.y
+		) * delta
+
+		var height_fraction: float = clampf(
+			(size.y - ember.position.y) / (size.y * 0.5),
+			0.0,
+			1.0
+		)
+
+		ember.modulate.a = 1.0 - height_fraction
+
+		if ember.position.y < size.y * 0.5:
+			ember.position = Vector2(
+				ember_origins[i],
+				size.y - float((i * 31) % 85)
+			)
+			ember.modulate.a = 1.0
